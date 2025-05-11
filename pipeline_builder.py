@@ -57,7 +57,7 @@ class Repository:
         for task_name, task in root_tasks:
             self._build_recursive([task_name], task.output_category)
         if not self.pipeline_list:
-            raise ValueError("No pipelines created. Check task dependencies.")
+            raise ValueError("No viable pipelines found. Check task input and output categories.")
         return self.pipeline_list
 
     def _get_root_tasks(self) -> List[Tuple[str, Task]]:
