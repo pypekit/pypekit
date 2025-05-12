@@ -78,10 +78,6 @@ class Repository:
             if name in available_tasks and task.input_category == next_category
         ]
 
-        if not next_tasks:
-            self._create_pipeline(current_chain)
-            return
-
         for name, task in next_tasks:
             self._build_recursive(current_chain + [name], task.output_category)
 
