@@ -4,8 +4,8 @@ from typing import List, Dict, Optional, Tuple
 
 
 class Task(ABC):
-    input_category: Optional[str] = None
-    output_category: Optional[str] = None
+    input_type: Optional[str] = None
+    output_type: Optional[str] = None
 
     @abstractmethod
     def run(self, input_path: Optional[str] = None, output_base_path: Optional[str] = None) -> str:
@@ -56,19 +56,19 @@ class Repository:
     def build_pipelines(self) -> List[Pipeline]:
         root_tasks = self._get_root_tasks()
         for task in root_tasks:
-            self._build_recursive([task.name], task.output_category)
+            self._build_recursive([task.name], task.output_type)
         if not self.pipeline_list:
             raise ValueError("No viable pipelines found. Check task input and output categories.")
         return self.pipeline_list
 
     def _get_root_tasks(self) -> List[Tuple[str, Task]]:
-        roots = [task for task in self.task_dict.values() if task.input_category is None]
+        roots = [task for task in self.task_dict.values() if task.input_type is None]
         if not roots:
-            raise ValueError("No root tasks found (tasks with no input category).")
+            raise ValueError("No root tasks found (tasks with no input type).")
         return roots
 
-    def _build_recursive(self, current_chain: List[str], next_category: Optional[str]):
-        if next_category is None:
+    def _build_recursive(self, current_chain: List[str], next_type: Optional[str]):
+        if next_type is None:
             self._create_pipeline(current_chain)
             return
 
@@ -76,11 +76,11 @@ class Repository:
         next_tasks = [
             task
             for task in self.task_dict.values()
-            if task.name in available_tasks and task.input_category == next_category
+            if task.name in available_tasks and task.input_type == next_type
         ]
 
         for task in next_tasks:
-            self._build_recursive(current_chain + [task.name], task.output_category)
+            self._build_recursive(current_chain + [task.name], task.output_type)
 
     def _create_pipeline(self, task_names: List[str]):
         pipeline_id = str(uuid.uuid4())
