@@ -23,7 +23,7 @@ class Pipeline:
         self.id = pipeline_id
         self.tasks = tasks
 
-    def run(self, input_path: Optional[str] = None, output_dir: Optional[str] = None) -> str:
+    def run(self, input_path: Optional[str] = None, output_dir: Optional[str] = ".") -> str:
         """
         Executes the pipeline by running each task sequentially.
         """
@@ -103,7 +103,7 @@ class CachedExecutor:
                 "output_path": output_path,
                 "tasks": [task.name for task in pipeline.tasks],
             })
-            print(f"Pipeline {pipeline.id} completed.")
+        return self.results
 
     def _run_pipeline(self, pipeline: Pipeline, input_path: Optional[str] = None) -> str:
         """
@@ -115,6 +115,7 @@ class CachedExecutor:
             if task_signature in self.cache:
                 input_path = self.cache[task_signature]
             else:
-                input_path = task.run(input_path, self.cache_dir)
+                output_base_path = f"{self.cache_dir}/{task.name}_{pipeline.id}"
+                input_path = task.run(input_path, output_base_path)
                 self.cache[task_signature] = input_path
         return input_path
