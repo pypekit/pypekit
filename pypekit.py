@@ -4,8 +4,8 @@ from typing import List, Dict, Optional, Tuple
 
 
 class Task(ABC):
-    input_type: Optional[str] = None
-    output_type: Optional[str] = None
+    input_types: List[str]
+    output_types: List[str]
 
     @abstractmethod
     def run(self, input_path: Optional[str] = None, output_base_path: Optional[str] = None) -> str:
@@ -54,21 +54,22 @@ class Repository:
         self.task_dict[task_name] = task
 
     def build_pipelines(self) -> List[Pipeline]:
-        root_tasks = self._get_root_tasks()
-        for task in root_tasks:
-            self._build_recursive([task.name], task.output_type)
+        source_tasks = self._get_source_tasks()
+        for task in source_tasks:
+            for output_type in task.output_types:
+                self._build_recursive([task.name], output_type)
         if not self.pipeline_list:
             raise ValueError("No viable pipelines found. Check task input and output categories.")
         return self.pipeline_list
 
-    def _get_root_tasks(self) -> List[Tuple[str, Task]]:
-        roots = [task for task in self.task_dict.values() if task.input_type is None]
-        if not roots:
-            raise ValueError("No root tasks found (tasks with no input type).")
-        return roots
+    def _get_source_tasks(self) -> List[Tuple[str, Task]]:
+        sources = [task for task in self.task_dict.values() if "source" in task.input_types]
+        if not sources:
+            raise ValueError("No source tasks found (tasks with input type \"source\").")
+        return sources
 
     def _build_recursive(self, current_chain: List[str], next_type: Optional[str]):
-        if next_type is None:
+        if next_type == "sink":
             self._create_pipeline(current_chain)
             return
 
@@ -76,11 +77,12 @@ class Repository:
         next_tasks = [
             task
             for task in self.task_dict.values()
-            if task.name in available_tasks and task.input_type == next_type
+            if task.name in available_tasks and next_type in task.input_types
         ]
 
         for task in next_tasks:
-            self._build_recursive(current_chain + [task.name], task.output_type)
+            for output_type in task.output_types:
+                self._build_recursive(current_chain + [task.name], output_type)
 
     def _create_pipeline(self, task_names: List[str]):
         pipeline_id = str(uuid.uuid4())
@@ -89,11 +91,12 @@ class Repository:
 
 
 class CachedExecutor:
-    def __init__(self, cache_dir: str, pipelines: List[Pipeline]):
+    def __init__(self, cache_dir: str, pipelines: List[Pipeline], verbose: bool = False):
         self.cache_dir = cache_dir
         self.cache: Dict[str, str] = {}
         self.pipelines = pipelines
         self.results: List[Dict] = []
+        self.verbose = verbose
 
     def run(self):
         for pipeline in self.pipelines:
@@ -103,6 +106,8 @@ class CachedExecutor:
                 "output_path": output_path,
                 "tasks": [task.name for task in pipeline.tasks],
             })
+            if self.verbose:
+                print(f"Pipeline {pipeline.id} completed.")
         return self.results
 
     def _run_pipeline(self, pipeline: Pipeline, input_path: Optional[str] = None) -> str:
