@@ -1,3 +1,4 @@
+import os
 import uuid
 from abc import ABC, abstractmethod
 from typing import List, Dict, Optional, Tuple
@@ -9,7 +10,7 @@ class Task(ABC):
     output_types: List[str]
 
     @abstractmethod
-    def run(self, input_path: Optional[Path] = None, output_base_path: Optional[Path] = None) -> str:
+    def run(self, input_path: Optional[Path] = None, output_base_path: Optional[Path] = None) -> Path:
         """
         Execute the task using input data and write to the output directory.
         :param input_path: Path to input data.
@@ -28,12 +29,15 @@ class Pipeline:
         self.id = pipeline_id
         self.tasks = tasks
 
-    def run(self, input_path: Optional[Path] = None, output_dir: Optional[Path] = ".") -> str:
+    def run(self, input_path: Optional[Path] = None, output_dir: Optional[Path] = ".") -> Path:
         """
         Executes the pipeline by running each task sequentially.
+        :param input_path: Path to the initial input data.
+        :param output_dir: Directory to store the output data.
+        :return: Path to the final output data.
         """
         for task in self.tasks:
-            output_base_path = f"{output_dir}/{task.name}_{self.id}"
+            output_base_path = Path(output_dir)/f"{task.name}_{self.id}"
             input_path = task.run(input_path, output_base_path)
         return input_path
 
@@ -49,6 +53,10 @@ class Repository:
             self.fill_repository(task_tuple_list)
 
     def fill_repository(self, task_tuple_list: List[Tuple[str, Task]]):
+        """
+        Fills the repository with tasks.
+        :param task_tuple_list: List of tuples containing task name and task instance.
+        """
         for task_name, task in task_tuple_list:
             self._add_task(task_name, task)
 
@@ -59,6 +67,11 @@ class Repository:
         self.task_dict[task_name] = task
 
     def build_pipelines(self) -> List[Pipeline]:
+        """
+        Builds pipelines from the tasks in the repository.
+        It starts from tasks with input type "source" and recursively builds the pipeline ending with output type "sink".
+        :return: List of pipelines.
+        """
         source_tasks = self._get_source_tasks()
         for task in source_tasks:
             for output_type in task.output_types:
@@ -99,14 +112,19 @@ class Repository:
 
 
 class CachedExecutor:
-    def __init__(self, cache_dir: str, pipelines: List[Pipeline], verbose: bool = False):
-        self.cache_dir = cache_dir
-        self.cache: Dict[str, str] = {}
+    def __init__(self, pipelines: List[Pipeline], cache_dir: Optional[Path] = Path("cache"), verbose: bool = False):
         self.pipelines = pipelines
-        self.results: List[Dict] = []
+        self.cache: Dict[str, Path] = {}
         self.verbose = verbose
+        if not os.path.exists(cache_dir):
+            os.makedirs(cache_dir)
+        self.cache_dir = cache_dir
+        self.results: List[Dict] = []
 
     def run(self):
+        """
+        Runs all pipelines in the executor, caching results to avoid redundant computations.
+        """
         for pipeline in self.pipelines:
             output_path = self._run_pipeline(pipeline)
             self.results.append({
@@ -118,13 +136,10 @@ class CachedExecutor:
                 print(f"Pipeline {pipeline.id} completed.")
         return self.results
 
-    def _run_pipeline(self, pipeline: Pipeline, input_path: Optional[Path] = None) -> str:
-        """
-        Runs a pipeline with caching: if a task chain has already been run, it reuses the output.
-        """
+    def _run_pipeline(self, pipeline: Pipeline, input_path: Optional[Path] = None) -> Path:
         task_signature = ""
         for task in pipeline.tasks:
-            task_signature += f"_{task.name}"
+            task_signature += f">{task.name}"
             if task_signature in self.cache:
                 input_path = self.cache[task_signature]
             else:
@@ -134,4 +149,4 @@ class CachedExecutor:
         return input_path
 
     def __repr__(self):
-        return f"CachedExecutor(cache_dir={self.cache_dir}, pipelines={len(self.pipelines)}, verbose={self.verbose})"
+        return f"CachedExecutor(cache_dir={self.cache_dir}, pipelines={len(self.pipelines)})"
