@@ -1,6 +1,7 @@
 import uuid
 from abc import ABC, abstractmethod
 from typing import List, Dict, Optional, Tuple
+from pathlib import Path
 
 
 class Task(ABC):
@@ -8,7 +9,7 @@ class Task(ABC):
     output_types: List[str]
 
     @abstractmethod
-    def run(self, input_path: Optional[str] = None, output_base_path: Optional[str] = None) -> str:
+    def run(self, input_path: Optional[Path] = None, output_base_path: Optional[Path] = None) -> str:
         """
         Execute the task using input data and write to the output directory.
         :param input_path: Path to input data.
@@ -16,6 +17,10 @@ class Task(ABC):
         :return: Path to output data.
         """
         pass
+    
+    def __repr__(self):
+        name = self.name if hasattr(self, 'name') else self.__class__.__name__
+        return f"Task(name={name}, input_types={self.input_types}, output_types={self.output_types})"
 
 
 class Pipeline:
@@ -23,7 +28,7 @@ class Pipeline:
         self.id = pipeline_id
         self.tasks = tasks
 
-    def run(self, input_path: Optional[str] = None, output_dir: Optional[str] = ".") -> str:
+    def run(self, input_path: Optional[Path] = None, output_dir: Optional[Path] = ".") -> str:
         """
         Executes the pipeline by running each task sequentially.
         """
@@ -89,6 +94,9 @@ class Repository:
         tasks = [self.task_dict[name] for name in task_names]
         self.pipeline_list.append(Pipeline(pipeline_id, tasks))
 
+    def __repr__(self):
+        return f"Repository(tasks={list(self.task_dict.keys())}, pipelines={len(self.pipeline_list)})"
+
 
 class CachedExecutor:
     def __init__(self, cache_dir: str, pipelines: List[Pipeline], verbose: bool = False):
@@ -110,7 +118,7 @@ class CachedExecutor:
                 print(f"Pipeline {pipeline.id} completed.")
         return self.results
 
-    def _run_pipeline(self, pipeline: Pipeline, input_path: Optional[str] = None) -> str:
+    def _run_pipeline(self, pipeline: Pipeline, input_path: Optional[Path] = None) -> str:
         """
         Runs a pipeline with caching: if a task chain has already been run, it reuses the output.
         """
@@ -120,7 +128,10 @@ class CachedExecutor:
             if task_signature in self.cache:
                 input_path = self.cache[task_signature]
             else:
-                output_base_path = f"{self.cache_dir}/{task.name}_{pipeline.id}"
+                output_base_path = Path(self.cache_dir)/f"{task.name}_{pipeline.id}"
                 input_path = task.run(input_path, output_base_path)
                 self.cache[task_signature] = input_path
         return input_path
+
+    def __repr__(self):
+        return f"CachedExecutor(cache_dir={self.cache_dir}, pipelines={len(self.pipelines)}, verbose={self.verbose})"
