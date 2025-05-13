@@ -8,60 +8,61 @@ class Task(ABC):
     output_category: Optional[str] = None
 
     @abstractmethod
-    def run(self, input_path: Optional[str] = None, output_dir: Optional[str] = None) -> str:
+    def run(self, input_path: Optional[str] = None, output_base_path: Optional[str] = None) -> str:
         """
         Execute the task using input data and write to the output directory.
         :param input_path: Path to input data.
-        :param output_dir: Directory to store output.
+        :param output_base_path: Path for output data without file extension.
         :return: Path to output data.
         """
         pass
 
 
 class Pipeline:
-    def __init__(self, pipeline_id: str, tasks: List[Task], task_names: List[str]):
+    def __init__(self, pipeline_id: str, tasks: List[Task]):
         self.id = pipeline_id
         self.tasks = tasks
-        self.task_names = task_names
 
     def run(self, input_path: Optional[str] = None, output_dir: Optional[str] = None) -> str:
         """
         Executes the pipeline by running each task sequentially.
         """
         for task in self.tasks:
-            input_path = task.run(input_path, output_dir)
+            output_base_path = f"{output_dir}/{task.name}_{self.id}"
+            input_path = task.run(input_path, output_base_path)
         return input_path
 
     def __repr__(self):
-        return f"Pipeline(id={self.id}, tasks={self.task_names})"
+        return f"Pipeline(id={self.id}, tasks={[task.name for task in self.tasks]})"
 
 
 class Repository:
-    def __init__(self, task_list: Optional[List[Tuple[str, Task]]] = None):
+    def __init__(self, task_tuple_list: Optional[List[Tuple[str, Task]]] = None):
         self.task_dict: Dict[str, Task] = {}
         self.pipeline_list: List[Pipeline] = []
-        if task_list:
-            self.fill_repository(task_list)
+        if task_tuple_list:
+            self.fill_repository(task_tuple_list)
 
-    def fill_repository(self, task_list: List[Tuple[str, Task]]):
-        for task_name, task in task_list:
+    def fill_repository(self, task_tuple_list: List[Tuple[str, Task]]):
+        for task_name, task in task_tuple_list:
             self._add_task(task_name, task)
 
     def _add_task(self, task_name: str, task: Task):
         if task_name in self.task_dict:
             raise ValueError(f"Task '{task_name}' already exists in repository.")
+        task.name = task_name
         self.task_dict[task_name] = task
 
     def build_pipelines(self) -> List[Pipeline]:
         root_tasks = self._get_root_tasks()
-        for task_name, task in root_tasks:
-            self._build_recursive([task_name], task.output_category)
+        for task in root_tasks:
+            self._build_recursive([task.name], task.output_category)
         if not self.pipeline_list:
             raise ValueError("No viable pipelines found. Check task input and output categories.")
         return self.pipeline_list
 
     def _get_root_tasks(self) -> List[Tuple[str, Task]]:
-        roots = [(name, task) for name, task in self.task_dict.items() if task.input_category is None]
+        roots = [task for task in self.task_dict.values() if task.input_category is None]
         if not roots:
             raise ValueError("No root tasks found (tasks with no input category).")
         return roots
@@ -73,18 +74,18 @@ class Repository:
 
         available_tasks = set(self.task_dict) - set(current_chain)
         next_tasks = [
-            (name, task)
-            for name, task in self.task_dict.items()
-            if name in available_tasks and task.input_category == next_category
+            task
+            for task in self.task_dict.values()
+            if task.name in available_tasks and task.input_category == next_category
         ]
 
-        for name, task in next_tasks:
-            self._build_recursive(current_chain + [name], task.output_category)
+        for task in next_tasks:
+            self._build_recursive(current_chain + [task.name], task.output_category)
 
     def _create_pipeline(self, task_names: List[str]):
         pipeline_id = str(uuid.uuid4())
         tasks = [self.task_dict[name] for name in task_names]
-        self.pipeline_list.append(Pipeline(pipeline_id, tasks, task_names))
+        self.pipeline_list.append(Pipeline(pipeline_id, tasks))
 
 
 class CachedExecutor:
@@ -100,7 +101,7 @@ class CachedExecutor:
             self.results.append({
                 "pipeline_id": pipeline.id,
                 "output_path": output_path,
-                "tasks": pipeline.task_names
+                "tasks": [task.name for task in pipeline.tasks],
             })
             print(f"Pipeline {pipeline.id} completed.")
 
@@ -109,8 +110,8 @@ class CachedExecutor:
         Runs a pipeline with caching: if a task chain has already been run, it reuses the output.
         """
         task_signature = ""
-        for task, name in zip(pipeline.tasks, pipeline.task_names):
-            task_signature += f"_{name}"
+        for task in pipeline.tasks:
+            task_signature += f"_{task.name}"
             if task_signature in self.cache:
                 input_path = self.cache[task_signature]
             else:
