@@ -64,7 +64,7 @@ def test_task_id_property_validation():
 # ---------------------------------------------------------------------------
 
 def _build_simple_pipeline():
-    """Utility that returns a ready‑to‑run 3‑stage pipeline and its tasks."""
+    """Utility that returns a ready-to-run 3-stage pipeline and its tasks."""
     t_source = ConstantTask("raw", ["raw"], ["source"])
     t_mid = ConstantTask("processed", ["processed"], ["raw"])
     t_sink = ConstantTask("final", ["sink"], ["processed"])
@@ -187,8 +187,8 @@ def test_cached_executor_avoids_recomputation_with_identical_input():
 
     # Second run with identical input – results come from cache, no new runs.
     executor.run(input_="data")
-    assert loader.run_count == 1, "Loader should not re‑run due to caching"
-    assert processor.run_count == 1, "Processor should not re‑run due to caching"
+    assert loader.run_count == 1, "Loader should not re-run due to caching"
+    assert processor.run_count == 1, "Processor should not re-run due to caching"
 
     # Results dictionary must contain one entry per pipeline with the expected keys.
     for result in executor.results.values():
