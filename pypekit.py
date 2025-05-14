@@ -1,6 +1,6 @@
-import uuid
 from abc import ABC, abstractmethod
 from typing import List, Dict, Optional, Tuple, Sequence, Any
+from collections import OrderedDict
 
 
 class Task(ABC):
@@ -28,7 +28,7 @@ class Task(ABC):
         Returns the explicit name of the task if set, otherwise the class name. 
         :return: Name of the task.
         """
-        return getattr(self, "_name", self.__class__.__name__)
+        return getattr(self, "_name", self.__class__.__name__ + str(id(self)))
 
     @name.setter
     def name(self, value: str):
@@ -50,11 +50,11 @@ class Task(ABC):
 
 
 class Pipeline(Task):
-    def __init__(self, task_tuples: Optional[Sequence[Tuple[str, Task]]] = None, pipeline_id: Optional[str] = None):
-        self._task_dict: Dict[str, Task] = {}
+    def __init__(self, task_tuples: Optional[Sequence[Tuple[str, Task]]] = None):
+        self.id = str(id(self))
+        self._task_dict: OrderedDict[str, Task] = {}
         if task_tuples:
             self.add_tasks(task_tuples)
-        self._id: str = pipeline_id if pipeline_id else str(uuid.uuid4())
 
     @property
     def input_types(self) -> Sequence[str]:
@@ -99,23 +99,33 @@ class Pipeline(Task):
         if task_name in self._task_dict:
             raise ValueError(
                 f"Task '{task_name}' already exists in pipeline.")
-        if self._task_dict and not set(self.output_types).intersection(set(task.input_types)):
+        if not self._types_compatible(task):
             raise ValueError(
                 f"Task '{task_name}' cannot be added to pipeline. Output types of the previous task do not match input types of the new task.")
         task.name = task_name
         self._task_dict[task_name] = task
 
+    def _types_compatible(self, task: Task) -> bool:
+        if not self._task_dict and "source" in task.input_types:
+            return True
+        if not self._task_dict:
+            return False
+        last_task = list(self._task_dict.values())[-1]
+        return any(
+            output_type in task.input_types for output_type in last_task.output_types
+        )
+
     def __iter__(self):
-        return iter(self._task_dict.values())
+        return iter(self._task_dict.items())
 
     def __repr__(self):
-        return f"Pipeline(id={self._id}, tasks={list(self._task_dict)})"
+        return f"Pipeline(id={self.id}, tasks={list(self._task_dict)})"
 
 
 class Repository:
     def __init__(self, task_tuples: Optional[Sequence[Tuple[str, Task]]] = None):
         self._task_dict: Dict[str, Task] = {}
-        self._pipelines: List[Pipeline] = []
+        self._pipeline_dict: Dict[str, Pipeline] = {}
         if task_tuples:
             self.fill_repository(task_tuples)
 
@@ -133,15 +143,15 @@ class Repository:
         It starts from tasks with input type "source" and recursively builds the pipeline ending with output type "sink".
         :return: List of pipelines.
         """
-        self._pipelines = []
+        self._pipeline_dict = {}
         source_tasks = self._get_source_tasks()
         for task in source_tasks:
             for output_type in task.output_types:
                 self._build_recursive([task.name], output_type)
-        if not self._pipelines:
+        if not self._pipeline_dict:
             raise ValueError(
                 "No viable pipelines found. Check task input and output types.")
-        return self._pipelines
+        return self._pipeline_dict
 
     def _add_task(self, task_name: str, task: Task):
         if task_name in self._task_dict:
@@ -176,32 +186,34 @@ class Repository:
 
     def _create_pipeline(self, task_names: List[str]):
         tasks = [(name, self._task_dict[name]) for name in task_names]
-        self._pipelines.append(Pipeline(tasks))
+        pipeline = Pipeline(tasks)
+        self._pipeline_dict[pipeline.id] = pipeline
 
     def __repr__(self):
-        return f"Repository(tasks={list(self._task_dict)}, pipelines={len(self._pipelines)})"
+        return f"Repository(tasks={list(self._task_dict)}, pipelines={len(self._pipeline_dict)})"
 
 
 class CachedExecutor:
-    def __init__(self, pipelines: Sequence[Pipeline], verbose: bool = False):
-        self._pipelines = pipelines
+    def __init__(self, pipeline_dict: Dict[str, Pipeline] , verbose: bool = False):
+        self._pipeline_dict = pipeline_dict
         self._cache: Dict[str, Any] = {}
         self._verbose = verbose
-        self.results: List[Dict] = []
+        self.results: Dict[str, Any] = {}
 
     def run(self, input_: Optional[Any] = None) -> List[Dict]:
         """
         Runs all pipelines in the executor, caching results to avoid redundant computations.
         """
-        for pipeline in self._pipelines:
+        self.results = {}
+        for pipeline in self._pipeline_dict.values():
             output = self._run_pipeline(pipeline, input_)
-            self.results.append({
-                "pipeline_id": pipeline._id,
+            self.results[pipeline.id] = {
+                "pipeline_id": pipeline.id,
                 "output": output,
                 "tasks": list(pipeline._task_dict),
-            })
+            }
             if self._verbose:
-                print(f"Pipeline {pipeline._id} completed.")
+                print(f"Pipeline {pipeline.id} completed.")
         return self.results
 
     def _run_pipeline(self, pipeline: Pipeline, input_: Optional[Any] = None) -> Any:
@@ -217,4 +229,4 @@ class CachedExecutor:
         return output
 
     def __repr__(self):
-        return f"CachedExecutor(pipelines={len(self._pipelines)})"
+        return f"CachedExecutor(pipelines={len(self._pipeline_dict)})"
