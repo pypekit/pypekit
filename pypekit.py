@@ -49,7 +49,7 @@ class Task(ABC):
         pass
 
     def __repr__(self):
-        return f"Task(id={self.id}, input_types={self.input_types}, output_types={self.output_types})"
+        return f"Task(id={getattr(self, '_id', 'NOT ASSIGNED')}, input_types={self.input_types}, output_types={self.output_types})"
 
 
 class Pipeline(Task):
@@ -196,10 +196,10 @@ class Repository:
 
 
 class CachedExecutor:
-    def __init__(self, pipeline_dict: Dict[str, Pipeline], cache: Optional[Dict[str, Any]] = {}, verbose: Optional[bool] = False):
+    def __init__(self, pipeline_dict: Dict[str, Pipeline], cache: Optional[Dict[str, Any]] = None, verbose: Optional[bool] = False):
         self._pipeline_dict = pipeline_dict
         self._verbose = verbose
-        self.cache = cache
+        self.cache: Dict[str, Any] = cache or {}
         self.results: Dict[str, Any] = {}
 
     def run(self, input_: Optional[Any] = None) -> List[Dict]:
