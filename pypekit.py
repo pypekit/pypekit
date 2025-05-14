@@ -1,7 +1,6 @@
 import uuid
 from abc import ABC, abstractmethod
-from typing import List, Dict, Optional, Tuple, Sequence
-from pathlib import Path
+from typing import List, Dict, Optional, Tuple, Sequence, Any
 
 
 class Task(ABC):
@@ -38,12 +37,11 @@ class Task(ABC):
         self._name = value
 
     @abstractmethod
-    def run(self, input_path: Optional[Path] = None, output_base_path: Optional[Path] = None) -> Path:
+    def run(self, input_: Optional[Any] = None) -> Any:
         """
-        Execute the task using input data and write to the output directory.
-        :param input_path: Path to input data.
-        :param output_base_path: Path for output data without file extension.
-        :return: Path to output data.
+        Execute the task.
+        :param input_: Input for the task.
+        :return: Output of the task.
         """
         pass
 
@@ -65,7 +63,7 @@ class Pipeline(Task):
         :return: List of input types.
         """
         if not self._task_dict:
-            raise ValueError("Pipeline has no tasks.")
+            return ()
         return list(self._task_dict.values())[0].input_types
 
     @property
@@ -75,9 +73,9 @@ class Pipeline(Task):
         :return: List of output types.
         """
         if not self._task_dict:
-            raise ValueError("Pipeline has no tasks.")
+            return ()
         return list(self._task_dict.values())[-1].output_types
-    
+
     def add_tasks(self, task_tuples: Sequence[Tuple[str, Task]]):
         """
         Adds tasks to the pipeline.
@@ -86,27 +84,29 @@ class Pipeline(Task):
         for task_name, task in task_tuples:
             self._add_task(task_name, task)
 
+    def run(self, input_: Optional[Any] = None) -> Any:
+        """
+        Executes the pipeline by running each task sequentially.
+        :param input_: Input to the first task in the pipeline.
+        :return: Output of the last task in the pipeline.
+        """
+        for task in self._task_dict.values():
+            output = task.run(input_)
+            input_ = output
+        return output
+
     def _add_task(self, task_name: str, task: Task):
         if task_name in self._task_dict:
             raise ValueError(
                 f"Task '{task_name}' already exists in pipeline.")
+        if self._task_dict and not set(self.output_types).intersection(set(task.input_types)):
+            raise ValueError(
+                f"Task '{task_name}' cannot be added to pipeline. Output types of the previous task do not match input types of the new task.")
         task.name = task_name
         self._task_dict[task_name] = task
 
-    def run(self, input_path: Optional[Path] = None, output_dir: Optional[Path] = Path(".")) -> Path:
-        """
-        Executes the pipeline by running each task sequentially.
-        :param input_path: Path to the initial input data.
-        :param output_dir: Directory to store the output data.
-        :return: Path to the final output data.
-        """
-        for task in self._task_dict.values():
-            output_base_path = Path(output_dir)/f"{task.name}_{self._id}"
-            input_path = task.run(input_path, output_base_path)
-        return input_path
-
     def __iter__(self):
-        return iter(self._tasks)
+        return iter(self._task_dict.values())
 
     def __repr__(self):
         return f"Pipeline(id={self._id}, tasks={list(self._task_dict)})"
@@ -140,7 +140,7 @@ class Repository:
                 self._build_recursive([task.name], output_type)
         if not self._pipelines:
             raise ValueError(
-                "No viable pipelines found. Check task input and output categories.")
+                "No viable pipelines found. Check task input and output types.")
         return self._pipelines
 
     def _add_task(self, task_name: str, task: Task):
@@ -151,12 +151,12 @@ class Repository:
         self._task_dict[task_name] = task
 
     def _get_source_tasks(self) -> List[Task]:
-        sources = [task for task in self._task_dict.values()
-                   if "source" in task.input_types]
-        if not sources:
+        source_tasks = [task for task in self._task_dict.values()
+                        if "source" in task.input_types]
+        if not source_tasks:
             raise ValueError(
                 "No source tasks found (tasks with input type \"source\").")
-        return sources
+        return source_tasks
 
     def _build_recursive(self, current_chain: List[str], next_type: Optional[str]):
         if next_type == "sink":
@@ -183,41 +183,38 @@ class Repository:
 
 
 class CachedExecutor:
-    def __init__(self, pipelines: Sequence[Pipeline], cache_dir: Optional[Path] = Path("cache"), verbose: bool = False):
+    def __init__(self, pipelines: Sequence[Pipeline], verbose: bool = False):
         self._pipelines = pipelines
-        self._cache: Dict[str, Path] = {}
-        self._cache_dir = Path(cache_dir)
-        self._cache_dir.mkdir(parents=True, exist_ok=True)
+        self._cache: Dict[str, Any] = {}
         self._verbose = verbose
         self.results: List[Dict] = []
 
-    def run(self):
+    def run(self, input_: Optional[Any] = None) -> List[Dict]:
         """
         Runs all pipelines in the executor, caching results to avoid redundant computations.
         """
         for pipeline in self._pipelines:
-            output_path = self._run_pipeline(pipeline)
+            output = self._run_pipeline(pipeline, input_)
             self.results.append({
                 "pipeline_id": pipeline._id,
-                "output_path": output_path,
+                "output": output,
                 "tasks": list(pipeline._task_dict),
             })
             if self._verbose:
                 print(f"Pipeline {pipeline._id} completed.")
         return self.results
 
-    def _run_pipeline(self, pipeline: Pipeline, input_path: Optional[Path] = None) -> Path:
+    def _run_pipeline(self, pipeline: Pipeline, input_: Optional[Any] = None) -> Any:
         task_signature = ""
         for task in pipeline._task_dict.values():
             task_signature += f">{task.name}"
             if task_signature in self._cache:
-                input_path = self._cache[task_signature]
+                input_ = self._cache[task_signature]
             else:
-                output_base_path = Path(
-                    self._cache_dir)/f"{task.name}_{pipeline._id}"
-                input_path = task.run(input_path, output_base_path)
-                self._cache[task_signature] = input_path
-        return input_path
+                output = task.run(input_)
+                self._cache[task_signature] = output
+                input_ = output
+        return output
 
     def __repr__(self):
-        return f"CachedExecutor(cache_dir={self._cache_dir}, pipelines={len(self._pipelines)})"
+        return f"CachedExecutor(pipelines={len(self._pipelines)})"
