@@ -54,7 +54,7 @@ class Task(ABC):
 
 class Pipeline(Task):
     def __init__(self, task_tuples: Optional[Sequence[Tuple[str, Task]]] = None, pipeline_id: Optional[str] = None):
-        self._task_dict: OrderedDict[str, Task] = {}
+        self._task_dict: OrderedDict[str, Task] = OrderedDict()
         if task_tuples:
             self.add_tasks(task_tuples)
         self.id = pipeline_id if pipeline_id else uuid.uuid4().hex
@@ -139,7 +139,7 @@ class Repository:
         for task_id, task in task_tuples:
             self._add_task(task_id, task)
 
-    def build_pipelines(self) -> List[Pipeline]:
+    def build_pipelines(self) -> Dict[str, Pipeline]:
         """
         Builds pipelines from the tasks in the repository.
         It starts from tasks with input type "source" and recursively builds the pipeline ending with output type "sink".
@@ -202,7 +202,7 @@ class CachedExecutor:
         self.cache: Dict[str, Any] = cache or {}
         self.results: Dict[str, Any] = {}
 
-    def run(self, input_: Optional[Any] = None) -> List[Dict]:
+    def run(self, input_: Optional[Any] = None) -> Dict[str, Any]:
         """
         Runs all pipelines in the executor, caching results to avoid redundant computations.
         """
