@@ -1,4 +1,5 @@
 import uuid
+import time
 from abc import ABC, abstractmethod
 from typing import List, Dict, Optional, Tuple, Sequence, Any
 from collections import OrderedDict
@@ -208,26 +209,32 @@ class CachedExecutor:
         """
         self.results = {}
         for pipeline in self._pipeline_dict.values():
-            output = self._run_pipeline(pipeline, input_)
+            output, runtime = self._run_pipeline(pipeline, input_)
             self.results[pipeline.id] = {
                 "pipeline_id": pipeline.id,
                 "output": output,
+                "runtime": runtime,
                 "tasks": list(pipeline._task_dict),
             }
             if self._verbose:
                 print(f"Pipeline {pipeline.id} completed.")
         return self.results
 
-    def _run_pipeline(self, pipeline: Pipeline, input_: Optional[Any] = None) -> Any:
+    def _run_pipeline(self, pipeline: Pipeline, input_: Optional[Any] = None) -> Tuple[Any, float]:
+        runtime = 0.0
         task_signature = _stable_hash(input_)
         for task in pipeline._task_dict.values():
             task_signature += f">{task.id}"
             if task_signature in self.cache:
-                input_ = self.cache[task_signature]
+                input_ = self.cache[task_signature]["output"]
+                runtime += self.cache[task_signature]['runtime']
             else:
+                start_time = time.process_time()
                 input_ = task.run(input_)
-                self.cache[task_signature] = input_
-        return input_
+                end_time = time.process_time()
+                self.cache[task_signature] = {"output": input_, "runtime": end_time - start_time}
+                runtime += end_time - start_time
+        return input_, runtime
 
     def __repr__(self):
         return f"CachedExecutor(pipelines={len(self._pipeline_dict)})"
