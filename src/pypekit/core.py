@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from typing import List, Dict, Optional, Tuple, Sequence, Any
 from collections import OrderedDict
 
-from utils import _stable_hash
+from .utils import _stable_hash
 
 
 SOURCE_TYPE = "source"

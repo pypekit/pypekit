@@ -1,0 +1,29 @@
+[build-system]
+requires = ["hatchling>=1.30"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pypekit"
+version = "0.0.1"
+authors = [
+  { name = "Tim Berti", email = "tim.fabian.berti@gmail.com" }
+]
+description = "Lightweight Python package for data pipelines"
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python",
+]
+license = "MIT"
+license-files = ["LICEN[CS]E*"]
+
+[project.urls]
+Homepage = "https://github.com/pypekit/pypekit"
+Issues   = "https://github.com/pypekit/pypekit/issues"
+
+[tool.pytest.ini_options]
+addopts = "-ra -q"
+testpaths = [
+    "tests",
+]
+python_files = ["test_*.py", "*_test.py"]
