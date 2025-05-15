@@ -110,10 +110,8 @@ class Pipeline(Task):
         self._task_dict[task_id] = task
 
     def _types_compatible(self, task: Task) -> bool:
-        if not self._task_dict and SOURCE_TYPE in task.input_types:
-            return True
         if not self._task_dict:
-            return False
+            return True
         last_task = list(self._task_dict.values())[-1]
         return any(
             output_type in task.input_types for output_type in last_task.output_types
