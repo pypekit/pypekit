@@ -1,5 +1,6 @@
 import uuid
 import time
+import sys
 from abc import ABC, abstractmethod
 from typing import List, Dict, Optional, Tuple, Sequence, Any
 from collections import OrderedDict
@@ -140,7 +141,7 @@ class Repository:
         for task_id, task in task_tuples:
             self._add_task(task_id, task)
 
-    def build_pipelines(self) -> Dict[str, Pipeline]:
+    def build_pipelines(self, max_depth: int = sys.maxsize) -> Dict[str, Pipeline]:
         """
         Builds pipelines from the tasks in the repository.
         It starts from tasks with input type "source" and recursively builds the pipeline ending with output type "sink".
@@ -150,7 +151,7 @@ class Repository:
         source_tasks = self._get_source_tasks()
         for task in source_tasks:
             for output_type in task.output_types:
-                self._build_recursive([task.id], output_type)
+                self._build_recursive([task.id], output_type, 0, max_depth)
         if not self._pipeline_dict:
             raise ValueError(
                 "No viable pipelines found. Check task input and output types.")
@@ -171,7 +172,9 @@ class Repository:
                 "No source tasks found (tasks with input type \"source\").")
         return source_tasks
 
-    def _build_recursive(self, current_chain: List[str], next_type: Optional[str]):
+    def _build_recursive(self, current_chain: List[str], next_type: str, depth: int, max_depth: int):
+        if depth > max_depth:
+            return
         if next_type == SINK_TYPE:
             self._create_pipeline(current_chain)
             return
@@ -185,7 +188,7 @@ class Repository:
 
         for task in next_tasks:
             for output_type in task.output_types:
-                self._build_recursive(current_chain + [task.id], output_type)
+                self._build_recursive(current_chain + [task.id], output_type, depth + 1, max_depth)
 
     def _create_pipeline(self, task_ids: List[str]):
         tasks = [(id, self._task_dict[id]) for id in task_ids]
@@ -197,7 +200,7 @@ class Repository:
 
 
 class CachedExecutor:
-    def __init__(self, pipeline_dict: Dict[str, Pipeline], cache: Optional[Dict[str, Any]] = None, verbose: Optional[bool] = False):
+    def __init__(self, pipeline_dict: Dict[str, Pipeline], cache: Optional[Dict[str, Any]] = None, verbose: bool = False):
         self._pipeline_dict = pipeline_dict
         self._verbose = verbose
         self.cache: Dict[str, Any] = cache or {}

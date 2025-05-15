@@ -192,7 +192,7 @@ def test_cached_executor_avoids_recomputation_with_identical_input():
 
     # Results dictionary must contain one entry per pipeline with the expected keys.
     for result in executor.results.values():
-        assert set(result) == {"pipeline_id", "output", "tasks"}
+        assert set(result) == {"pipeline_id", "output", "tasks", "runtime"}
 
 
 def test_cached_executor_repr_returns_readable_string():
