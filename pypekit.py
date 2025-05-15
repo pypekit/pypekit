@@ -211,7 +211,7 @@ class CachedExecutor:
         Runs all pipelines in the executor, caching results to avoid redundant computations.
         """
         self.results = {}
-        for pipeline in self._pipeline_dict.values():
+        for i, pipeline in enumerate(self._pipeline_dict.values()):
             output, runtime = self._run_pipeline(pipeline, input_)
             self.results[pipeline.id] = {
                 "pipeline_id": pipeline.id,
@@ -220,7 +220,7 @@ class CachedExecutor:
                 "tasks": list(pipeline._task_dict),
             }
             if self._verbose:
-                print(f"Pipeline {pipeline.id} completed.")
+                print(f"Ran pipeline {pipeline.id}. Runtime: {runtime:.2f}s. {i + 1}/{len(self._pipeline_dict)} pipelines completed.")
         return self.results
 
     def _run_pipeline(self, pipeline: Pipeline, input_: Optional[Any] = None) -> Tuple[Any, float]:
