@@ -143,8 +143,9 @@ class Pipeline(Task):
 
 
 class Node():
-    def __init__(self, task: Task):
+    def __init__(self, task: Task, parent: Optional['Node'] = None):
         self.task = task
+        self.parent = parent
         self.children: List['Node'] = []
 
     def add_child(self, child: 'Node'):
@@ -153,11 +154,22 @@ class Node():
                 f"Child cannot be added to node. Output types of the child task do not match input types of the node task.")
         self.children.append(child)
 
+# def print_tree(node, prefix = "", is_last = True):
+#     connector = "└── " if is_last else "├── "
+#     print(prefix + connector + node.task.id)
+#     continuation = "    " if is_last else "│   "
+#     child_prefix = prefix + continuation
+#     total = len(node.children)
+#     for idx, child in enumerate(node.children):
+#         print_tree(child, child_prefix, idx == total - 1)
+
 
 class Repository:
     def __init__(self, task_tuples: Optional[Sequence[Tuple[str, Task]]] = None):
         self._task_dict: Dict[str, Task] = {}
         self._pipeline_dict: Dict[str, Pipeline] = {}
+        self.root: Optional[Node] = None
+        self.leaves: List[Node] = []
         if task_tuples:
             self.fill_repository(task_tuples)
 
@@ -179,12 +191,13 @@ class Repository:
         source_tasks = self._get_source_tasks()
         for task in source_tasks:
             for output_type in task.output_types:
-                self._build_pipeline_recursive([task.id], output_type, 0, max_depth)
+                self._build_pipeline_recursive(
+                    [task.id], output_type, 0, max_depth)
         if not self._pipeline_dict:
             raise ValueError(
                 "No viable pipelines found. Check task input and output types.")
         return self._pipeline_dict
-    
+
     def build_tree(self, max_depth: int = sys.maxsize) -> Node:
         """
         Builds a tree structure from the tasks in the repository.
@@ -193,7 +206,25 @@ class Repository:
         """
         self.root = Node(PassTask(output_types=[SOURCE_TYPE], id="root"))
         self._build_tree_recursive(self.root, [], 0, max_depth)
+        # self._prune_tree()
         return self.root
+
+    def print_tree(self):
+        """
+        Prints the tree structure of the repository.
+        """
+        if not self.root:
+            raise ValueError("Tree has not been built yet.")
+        self._print_tree_recursive(self.root)
+
+    def _print_tree_recursive(self, node: Node, prefix: str = "", is_last: bool = True):
+        connector = "└── " if is_last else "├── "
+        print(prefix + connector + node.task.id)
+        continuation = "    " if is_last else "│   "
+        child_prefix = prefix + continuation
+        total = len(node.children)
+        for idx, child in enumerate(node.children):
+            self._print_tree_recursive(child, child_prefix, idx == total - 1)
 
     def _add_task(self, task_id: str, task: Task):
         if task_id in self._task_dict:
@@ -226,10 +257,12 @@ class Repository:
 
         for task in next_tasks:
             for output_type in task.output_types:
-                self._build_pipeline_recursive(current_chain + [task.id], output_type, depth + 1, max_depth)
-    
+                self._build_pipeline_recursive(
+                    current_chain + [task.id], output_type, depth + 1, max_depth)
+
     def _build_tree_recursive(self, node: Node, current_chain: List[str], depth: int, max_depth: int):
         if depth > max_depth:
+            self.leaves.append(node)
             return
         available_tasks = set(self._task_dict) - set(current_chain)
         next_tasks = [
@@ -237,12 +270,26 @@ class Repository:
             for task in self._task_dict.values()
             if task.id in available_tasks and any(output_type in task.input_types for output_type in node.task.output_types)
         ]
+        if not next_tasks:
+            self.leaves.append(node)
         for task in next_tasks:
-            new_node = Node(task)
+            new_node = Node(task, parent=node)
             node.add_child(new_node)
-            for output_type in task.output_types:
-                self._build_tree_recursive(new_node, current_chain + [task.id], depth + 1, max_depth)
+            self._build_tree_recursive(
+                new_node, current_chain + [task.id], depth + 1, max_depth)
 
+    def _prune_tree(self):
+        for node in self.leaves.copy():
+            self._prune_tree_recursive(node)
+
+    def _prune_tree_recursive(self, node: Node):
+        if not node.children and node not in self.leaves:
+            self.leaves.append(node)
+        if not SINK_TYPE in node.task.output_types and not node.children:
+            self.leaves.remove(node)
+            if node.parent:
+                node.parent.children.remove(node)
+                self._prune_tree_recursive(node.parent)
 
     def _create_pipeline(self, task_ids: List[str]):
         tasks = [(id, self._task_dict[id]) for id in task_ids]
@@ -274,7 +321,8 @@ class CachedExecutor:
                 "tasks": list(pipeline._task_dict),
             }
             if self._verbose:
-                print(f"Ran pipeline {pipeline.id}. Runtime: {runtime:.2f}s. {i + 1}/{len(self._pipeline_dict)} pipelines completed.")
+                print(
+                    f"Ran pipeline {pipeline.id}. Runtime: {runtime:.2f}s. {i + 1}/{len(self._pipeline_dict)} pipelines completed.")
         return self.results
 
     def _run_pipeline(self, pipeline: Pipeline, input_: Optional[Any] = None) -> Tuple[Any, float]:
@@ -289,7 +337,8 @@ class CachedExecutor:
                 start_time = time.process_time()
                 input_ = task.run(input_)
                 end_time = time.process_time()
-                self.cache[task_signature] = {"output": input_, "runtime": end_time - start_time}
+                self.cache[task_signature] = {
+                    "output": input_, "runtime": end_time - start_time}
                 runtime += end_time - start_time
         return input_, runtime
 
