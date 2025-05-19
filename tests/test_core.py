@@ -1,6 +1,6 @@
 import pytest
 
-from pypekit import Task, Pipeline, Repository, CachedExecutor 
+from src.pypekit.core import Task, Pipeline, Repository, CachedExecutor 
 
 
 class ConstantTask(Task):
