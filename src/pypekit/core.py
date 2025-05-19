@@ -143,11 +143,11 @@ class Repository:
         self._prune_tree()
         return self.root
 
-    def _build_tree_recursive(self, node: Node, visited_notes: Set[Type[Task]], depth: int, max_depth: int):
+    def _build_tree_recursive(self, node: Node, visited_nodes: Set[Type[Task]], depth: int, max_depth: int):
         if depth > max_depth:
             self.leaves.append(node)
             return
-        available_task_classes = self.task_classes - visited_notes
+        available_task_classes = self.task_classes - visited_nodes
         next_task_classes = [task_class for task_class in available_task_classes if node.task.output_types.intersection(task_class().input_types)]
         if not next_task_classes:
             self.leaves.append(node)
@@ -155,7 +155,7 @@ class Repository:
             new_node = Node(task_class(), parent=node)
             node.add_child(new_node)
             self._build_tree_recursive(
-                new_node, visited_notes | {task_class}, depth + 1, max_depth)
+                new_node, visited_nodes | {task_class}, depth + 1, max_depth)
 
     def _prune_tree(self):
         for node in self.leaves.copy():
@@ -247,9 +247,9 @@ class CachedExecutor:
                 input_ = self.cache[task_signature]["output"]
                 runtime += self.cache[task_signature]['runtime']
             else:
-                start_time = time.process_time()
+                start_time = time.perf_counter ()
                 input_ = task.run(input_)
-                end_time = time.process_time()
+                end_time = time.perf_counter ()
                 self.cache[task_signature] = {
                     "output": input_, "runtime": end_time - start_time}
                 runtime += end_time - start_time
