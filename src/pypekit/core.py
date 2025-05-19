@@ -154,15 +154,6 @@ class Node():
                 f"Child cannot be added to node. Output types of the child task do not match input types of the node task.")
         self.children.append(child)
 
-# def print_tree(node, prefix = "", is_last = True):
-#     connector = "└── " if is_last else "├── "
-#     print(prefix + connector + node.task.id)
-#     continuation = "    " if is_last else "│   "
-#     child_prefix = prefix + continuation
-#     total = len(node.children)
-#     for idx, child in enumerate(node.children):
-#         print_tree(child, child_prefix, idx == total - 1)
-
 
 class Repository:
     def __init__(self, task_tuples: Optional[Sequence[Tuple[str, Task]]] = None):
