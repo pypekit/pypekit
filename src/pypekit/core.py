@@ -222,13 +222,6 @@ class CachedExecutor:
         for i, pipeline in enumerate(self.pipelines):
             try:
                 output, runtime = self._run_pipeline(pipeline, input_)
-                self.results.append({
-                    "output": output,
-                    "runtime": runtime,
-                    "tasks": [task.__class__.__name__ for task in pipeline],
-                })
-                if self.verbose: 
-                    print(f"Pipeline {i + 1}/{len(self.pipelines)} completed. Runtime: {runtime:.2f}s.")
             except Exception as e:
                 print(f"Error in pipeline {i + 1}: {e}")
                 self.results.append({
@@ -236,6 +229,14 @@ class CachedExecutor:
                     "runtime": None,
                     "tasks": [task.__class__.__name__ for task in pipeline],
                 })
+                continue
+            self.results.append({
+                "output": output,
+                "runtime": runtime,
+                "tasks": [task.__class__.__name__ for task in pipeline],
+            })
+            if self.verbose: 
+                print(f"Pipeline {i + 1}/{len(self.pipelines)} completed. Runtime: {runtime:.2f}s.")
         return self.results
 
     def _run_pipeline(self, pipeline: Pipeline, input_: Optional[Any] = None) -> Tuple[Any, float]:
