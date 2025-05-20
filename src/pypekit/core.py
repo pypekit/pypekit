@@ -130,7 +130,7 @@ class Repository:
         self.leaves: List[Node] = []
         self.task_classes: Set[Type[Task]] = task_classes or set()
         self.pipelines: List[Pipeline] = []
-        self.tree_string = ""
+        self.tree_string: str = ""
 
     def build_tree(self, max_depth: int = sys.maxsize) -> Node:
         """
@@ -171,7 +171,7 @@ class Repository:
                 node.parent.children.remove(node)
                 self._prune_tree_recursive(node.parent)
 
-    def build_tree_string(self):
+    def build_tree_string(self) -> str:
         """
         Creates a string representation of the tree structure.
         """
