@@ -130,6 +130,7 @@ class Repository:
         self.leaves: List[Node] = []
         self.task_classes: Set[Type[Task]] = task_classes or set()
         self.pipelines: List[Pipeline] = []
+        self.tree_string = ""
 
     def build_tree(self, max_depth: int = sys.maxsize) -> Node:
         """
@@ -170,22 +171,24 @@ class Repository:
                 node.parent.children.remove(node)
                 self._prune_tree_recursive(node.parent)
 
-    def print_tree(self):
+    def build_tree_string(self):
         """
-        Prints the tree structure of the repository.
+        Creates a string representation of the tree structure.
         """
         if not self.root:
             raise ValueError("Tree has not been built yet.")
-        self._print_tree_recursive(self.root)
+        self.tree_string = ""
+        self._tree_string_recursive(self.root)
+        return self.tree_string
 
-    def _print_tree_recursive(self, node: Node, prefix: str = "", is_last: bool = True):
+    def _tree_string_recursive(self, node: Node, prefix: str = "", is_last: bool = True):
         connector = "└── " if is_last else "├── "
-        print(prefix + connector + node.task.__class__.__name__)
+        self.tree_string += prefix + connector + node.task.__class__.__name__ + "\n"
         continuation = "    " if is_last else "│   "
         child_prefix = prefix + continuation
         total = len(node.children)
         for idx, child in enumerate(node.children):
-            self._print_tree_recursive(child, child_prefix, idx == total - 1)
+            self._tree_string_recursive(child, child_prefix, idx == total - 1)
 
     def build_pipelines(self) -> List[Pipeline]:
         """
