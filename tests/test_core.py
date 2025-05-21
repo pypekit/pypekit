@@ -11,35 +11,57 @@ from src.pypekit.core import (
 )
 
 
-
 # ─────────────────────────── helpers ────────────────────────────
 class TaskA(Task):
     @property
-    def input_types(self):   return {SOURCE_TYPE}
+    def input_types(self):
+        return {SOURCE_TYPE}
+
     @property
-    def output_types(self):  return {"a"}
-    def run(self, input_=None): return (input_ or "") + "A"
+    def output_types(self):
+        return {"a"}
+
+    def run(self, input_=None):
+        return (input_ or "") + "A"
+
 
 class TaskB(Task):
     @property
-    def input_types(self):   return {"a"}
+    def input_types(self):
+        return {"a"}
+
     @property
-    def output_types(self):  return {"b"}
-    def run(self, input_=None): return input_ + "B"
+    def output_types(self):
+        return {"b"}
+
+    def run(self, input_=None):
+        return input_ + "B"
+
 
 class TaskC(Task):
     @property
-    def input_types(self):   return {"b"}
+    def input_types(self):
+        return {"b"}
+
     @property
-    def output_types(self):  return {SINK_TYPE}
-    def run(self, input_=None): return input_ + "C"
+    def output_types(self):
+        return {SINK_TYPE}
+
+    def run(self, input_=None):
+        return input_ + "C"
+
 
 class CountingTask(Task):
     calls = 0
+
     @property
-    def input_types(self):   return {SOURCE_TYPE}
+    def input_types(self):
+        return {SOURCE_TYPE}
+
     @property
-    def output_types(self):  return {SINK_TYPE}
+    def output_types(self):
+        return {SINK_TYPE}
+
     def run(self, input_=None):
         type(self).calls += 1
         return (input_ or 0) + 1
@@ -48,7 +70,7 @@ class CountingTask(Task):
 # ───────────────────────────── tests ─────────────────────────────
 def test_pipeline_execution():
     pl = Pipeline([TaskA(), TaskB(), TaskC()])
-    assert pl.input_types  == {SOURCE_TYPE}
+    assert pl.input_types == {SOURCE_TYPE}
     assert pl.output_types == {SINK_TYPE}
     assert pl.run("") == "ABC"
 
@@ -56,7 +78,7 @@ def test_pipeline_execution():
 def test_pipeline_invalid_add():
     pl = Pipeline([TaskA()])
     with pytest.raises(ValueError):
-        pl.add_tasks([TaskA()])          # A cannot follow A
+        pl.add_tasks([TaskA()])  # A cannot follow A
 
 
 def test_node_child_validation():
@@ -79,9 +101,9 @@ def test_cached_executor_uses_cache():
 
     CountingTask.calls = 0
     exec_.run(0)
-    assert CountingTask.calls == 1                       # task executed
+    assert CountingTask.calls == 1  # task executed
     exec_.run(0)
-    assert CountingTask.calls == 1                       # result came from cache
+    assert CountingTask.calls == 1  # result came from cache
 
     key = "0>CountingTask"
     assert key in exec_.cache

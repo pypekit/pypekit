@@ -11,9 +11,7 @@ authors = [
 description = "Lightweight Python package for data pipelines"
 readme = "README.md"
 requires-python = ">=3.9"
-classifiers = [
-    "Programming Language :: Python",
-]
+classifiers = ["Programming Language :: Python"]
 license = "MIT"
 license-files = ["LICEN[CS]E*"]
 
@@ -21,9 +19,33 @@ license-files = ["LICEN[CS]E*"]
 Homepage = "https://github.com/pypekit/pypekit"
 Issues   = "https://github.com/pypekit/pypekit/issues"
 
+[project.optional-dependencies]
+dev = [
+  "hatch>=1.10",
+  "black>=24.3",
+  "mypy>=1.10",
+  "pytest>=8.2",
+  "pytest-cov>=4.1",
+]
+
 [tool.pytest.ini_options]
 addopts = "-ra -q"
-testpaths = [
-    "tests",
-]
+testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
+
+[tool.mypy]
+mypy_path = ["src"]
+strict = true
+show_error_codes = true
+ignore_missing_imports = true
+
+[tool.hatch.envs.default.scripts]
+fmt       = "black src tests"
+fmt-check = "black --check src tests"
+types     = "mypy src"
+test      = "pytest"
+check     = [
+  "fmt-check",
+  "types",
+  "test",
+]

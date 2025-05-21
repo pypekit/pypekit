@@ -1,7 +1,7 @@
 import time
 import sys
 from abc import ABC, abstractmethod
-from typing import List, Dict, Optional, Tuple, Any, Type, Set
+from typing import List, Dict, Optional, Tuple, Any, Type, Set, Iterator
 
 from .utils import _stable_hash
 
@@ -53,16 +53,20 @@ class Root(Task):
         return input_
 
 
-class Node():
-    def __init__(self, task: Task, parent: Optional['Node'] = None):
+class Node:
+    def __init__(self, task: Task, parent: Optional["Node"] = None):
         self.task = task
         self.parent = parent
-        self.children: List['Node'] = []
+        self.children: List["Node"] = []
 
-    def add_child(self, child: 'Node'):
-        if not any(output_type in child.task.input_types for output_type in self.task.output_types):
+    def add_child(self, child: "Node") -> None:
+        if not any(
+            output_type in child.task.input_types
+            for output_type in self.task.output_types
+        ):
             raise ValueError(
-                f"Child cannot be added to node. Output types of the child task do not match input types of the node task.")
+                f"Child cannot be added to node. Output types of the child task do not match input types of the node task."
+            )
         self.children.append(child)
 
 
@@ -92,7 +96,7 @@ class Pipeline(Task):
             return set()
         return self.tasks[-1].output_types
 
-    def add_tasks(self, tasks: List[Task]):
+    def add_tasks(self, tasks: List[Task]) -> None:
         """
         Adds tasks to the pipeline.
         :param tasks: List of tasks to be added.
@@ -110,19 +114,20 @@ class Pipeline(Task):
             input_ = task.run(input_)
         return input_
 
-    def _add_task(self, task: Task):
+    def _add_task(self, task: Task) -> None:
         if task.input_types.intersection(self.output_types) or not self.tasks:
             self.tasks.append(task)
         else:
             raise ValueError(
-                f"Task {task.__class__.__name__} cannot be added to the pipeline. Input types do not match the output types of {self.tasks[-1].__class__.__name__}.")
+                f"Task {task.__class__.__name__} cannot be added to the pipeline. Input types do not match the output types of {self.tasks[-1].__class__.__name__}."
+            )
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Task]:
         return iter(self.tasks)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"Pipeline(tasks={[task.__class__.__name__ for task in self.tasks]})"
-    
+
 
 class Repository:
     def __init__(self, task_classes: Optional[Set[Type[Task]]] = None):
@@ -144,25 +149,32 @@ class Repository:
         self._prune_tree()
         return self.root
 
-    def _build_tree_recursive(self, node: Node, visited_nodes: Set[Type[Task]], depth: int, max_depth: int):
+    def _build_tree_recursive(
+        self, node: Node, visited_nodes: Set[Type[Task]], depth: int, max_depth: int
+    ) -> None:
         if depth > max_depth:
             self.leaves.append(node)
             return
         available_task_classes = self.task_classes - visited_nodes
-        next_task_classes = [task_class for task_class in available_task_classes if node.task.output_types.intersection(task_class().input_types)]
+        next_task_classes = [
+            task_class
+            for task_class in available_task_classes
+            if node.task.output_types.intersection(task_class().input_types)
+        ]
         if not next_task_classes:
             self.leaves.append(node)
         for task_class in next_task_classes:
             new_node = Node(task_class(), parent=node)
             node.add_child(new_node)
             self._build_tree_recursive(
-                new_node, visited_nodes | {task_class}, depth + 1, max_depth)
+                new_node, visited_nodes | {task_class}, depth + 1, max_depth
+            )
 
-    def _prune_tree(self):
+    def _prune_tree(self) -> None:
         for node in self.leaves.copy():
             self._prune_tree_recursive(node)
 
-    def _prune_tree_recursive(self, node: Node):
+    def _prune_tree_recursive(self, node: Node) -> None:
         if not node.children and node not in self.leaves:
             self.leaves.append(node)
         if not SINK_TYPE in node.task.output_types and not node.children:
@@ -181,7 +193,9 @@ class Repository:
         self._tree_string_recursive(self.root)
         return self.tree_string
 
-    def _tree_string_recursive(self, node: Node, prefix: str = "", is_last: bool = True):
+    def _tree_string_recursive(
+        self, node: Node, prefix: str = "", is_last: bool = True
+    ) -> None:
         connector = "└── " if is_last else "├── "
         self.tree_string += prefix + connector + node.task.__class__.__name__ + "\n"
         continuation = "    " if is_last else "│   "
@@ -201,8 +215,8 @@ class Repository:
         tasks: List[Task] = []
         self._build_pipelines_recursive(self.root, tasks)
         return self.pipelines
-    
-    def _build_pipelines_recursive(self, node: Node, tasks: List[Task]):
+
+    def _build_pipelines_recursive(self, node: Node, tasks: List[Task]) -> None:
         if not node.children:
             self.pipelines.append(Pipeline(tasks[1:] + [node.task]))
             return
@@ -211,13 +225,18 @@ class Repository:
 
 
 class CachedExecutor:
-    def __init__(self, pipelines: List[Pipeline], cache: Optional[Dict[str, Any]] = None, verbose: bool = False):
+    def __init__(
+        self,
+        pipelines: List[Pipeline],
+        cache: Optional[Dict[str, Any]] = None,
+        verbose: bool = False,
+    ):
         self.pipelines = pipelines
         self.verbose = verbose
         self.cache: Dict[str, Any] = cache or {}
-        self.results: List[Dict] = []
+        self.results: List[Dict[str, Any]] = []
 
-    def run(self, input_: Optional[Any] = None) -> List[Dict]:
+    def run(self, input_: Optional[Any] = None) -> List[Dict[str, Any]]:
         """
         Runs all pipelines in the executor, caching results to avoid redundant computations.
         """
@@ -227,34 +246,44 @@ class CachedExecutor:
                 output, runtime = self._run_pipeline(pipeline, input_)
             except Exception as e:
                 print(f"Error in pipeline {i + 1}: {e}")
-                self.results.append({
-                    "output": None,
-                    "runtime": None,
-                    "tasks": [task.__class__.__name__ for task in pipeline],
-                })
+                self.results.append(
+                    {
+                        "output": None,
+                        "runtime": None,
+                        "tasks": [task.__class__.__name__ for task in pipeline],
+                    }
+                )
                 continue
-            self.results.append({
-                "output": output,
-                "runtime": runtime,
-                "tasks": [task.__class__.__name__ for task in pipeline],
-            })
-            if self.verbose: 
-                print(f"Pipeline {i + 1}/{len(self.pipelines)} completed. Runtime: {runtime:.2f}s.")
+            self.results.append(
+                {
+                    "output": output,
+                    "runtime": runtime,
+                    "tasks": [task.__class__.__name__ for task in pipeline],
+                }
+            )
+            if self.verbose:
+                print(
+                    f"Pipeline {i + 1}/{len(self.pipelines)} completed. Runtime: {runtime:.2f}s."
+                )
         return self.results
 
-    def _run_pipeline(self, pipeline: Pipeline, input_: Optional[Any] = None) -> Tuple[Any, float]:
+    def _run_pipeline(
+        self, pipeline: Pipeline, input_: Optional[Any] = None
+    ) -> Tuple[Any, float]:
         runtime = 0.0
         task_signature = _stable_hash(input_)
         for task in pipeline:
             task_signature += f">{task.__class__.__name__}"
             if task_signature in self.cache:
                 input_ = self.cache[task_signature]["output"]
-                runtime += self.cache[task_signature]['runtime']
+                runtime += self.cache[task_signature]["runtime"]
             else:
-                start_time = time.perf_counter ()
+                start_time = time.perf_counter()
                 input_ = task.run(input_)
-                end_time = time.perf_counter ()
+                end_time = time.perf_counter()
                 self.cache[task_signature] = {
-                    "output": input_, "runtime": end_time - start_time}
+                    "output": input_,
+                    "runtime": end_time - start_time,
+                }
                 runtime += end_time - start_time
         return input_, runtime
