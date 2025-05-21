@@ -14,7 +14,7 @@
 
 ## Commits & PRs
 
-* Follow **Conventional Commits** (`feat: …`, `fix: …`, `docs: …`).
+* Follow conventional commits (`feat: …`, `fix: …`, `docs: …`).
 * Run `hatch run fmt` to auto format your code.
 * Run `hatch run check` locally — CI must be green.
-* Open a pull request against **main**; one reviewer approval merges.
+* Open a pull.
