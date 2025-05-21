@@ -17,4 +17,4 @@
 * Follow conventional commits (`feat: …`, `fix: …`, `docs: …`).
 * Run `hatch run fmt` to auto format your code.
 * Run `hatch run check` locally — CI must be green.
-* Open a pull.
+* Open a pull request.
