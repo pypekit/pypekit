@@ -100,11 +100,13 @@ def test_cached_executor_uses_cache():
     exec_ = CachedExecutor([pipe])
 
     CountingTask.calls = 0
-    exec_.run(0)
+    exec_.run()
     assert CountingTask.calls == 1  # task executed
-    exec_.run(0)
+    exec_.run()
     assert CountingTask.calls == 1  # result came from cache
 
-    key = "0>CountingTask"
+    key = (
+        "2bf2b2b06bbd537d226f0e932267724e058bb0c652123fb355ece007bea3dd3b>CountingTask"
+    )
     assert key in exec_.cache
     assert exec_.cache[key]["output"] == 1

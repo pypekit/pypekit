@@ -12,6 +12,9 @@ SINK_TYPE = "sink"
 
 class Task(ABC):
 
+    run_config: Optional[Dict[str, Any]] = None
+    task_config: Optional[Dict[str, Any]] = None
+
     @property
     @abstractmethod
     def input_types(self) -> Set[str]:
@@ -60,6 +63,10 @@ class Node:
         self.children: List["Node"] = []
 
     def add_child(self, child: "Node") -> None:
+        """
+        Adds a child node to the current node.
+        :param child: Child node to be added.
+        """
         if not any(
             output_type in child.task.input_types
             for output_type in self.task.output_types
@@ -104,13 +111,18 @@ class Pipeline(Task):
         for task in tasks:
             self._add_task(task)
 
-    def run(self, input_: Optional[Any] = None) -> Any:
+    def run(
+        self, input_: Optional[Any] = None, run_config: Optional[Dict[str, Any]] = None
+    ) -> Any:
         """
         Executes the pipeline by running each task sequentially.
         :param input_: Input to the first task in the pipeline.
+        :param run_config: Run configuration for the tasks.
         :return: Output of the last task in the pipeline.
         """
         for task in self.tasks:
+            if run_config:
+                task.run_config = run_config
             input_ = task.run(input_)
         return input_
 
@@ -137,11 +149,12 @@ class Repository:
         self.pipelines: List[Pipeline] = []
         self.tree_string: str = ""
 
-    def build_tree(self, max_depth: int = sys.maxsize) -> Node:
+    def build_tree(self, max_depth: int = sys.getrecursionlimit()) -> Node:
         """
         Builds a tree structure from the tasks in the repository.
         It starts from tasks with input type "source" and recursively builds the tree.
         Branches are then pruned if they do not lead to tasks with output type "sink".
+        :param max_depth: Maximum depth of the tree.
         :return: Root node of the tree.
         """
         self.root = Node(Root())
@@ -235,18 +248,23 @@ class CachedExecutor:
         verbose: bool = False,
     ):
         self.pipelines = pipelines
-        self.verbose = verbose
         self.cache: Dict[str, Any] = cache or {}
+        self.verbose = verbose
         self.results: List[Dict[str, Any]] = []
 
-    def run(self, input_: Optional[Any] = None) -> List[Dict[str, Any]]:
+    def run(
+        self, input_: Optional[Any] = None, run_config: Optional[Dict[str, Any]] = None
+    ) -> List[Dict[str, Any]]:
         """
         Runs all pipelines in the executor, caching results to avoid redundant computations.
+        :param input_: Input for the first task in each pipeline.
+        :param run_config: Run configuration for the tasks.
+        :return: List of results for each pipeline.
         """
         self.results = []
         for i, pipeline in enumerate(self.pipelines):
             try:
-                output, runtime = self._run_pipeline(pipeline, input_)
+                output, runtime = self._run_pipeline(pipeline, input_, run_config)
             except Exception as e:
                 print(f"Error in pipeline {i + 1}: {e}")
                 self.results.append(
@@ -271,11 +289,16 @@ class CachedExecutor:
         return self.results
 
     def _run_pipeline(
-        self, pipeline: Pipeline, input_: Optional[Any] = None
+        self,
+        pipeline: Pipeline,
+        input_: Optional[Any] = None,
+        run_config: Optional[Dict[str, Any]] = None,
     ) -> Tuple[Any, float]:
         runtime = 0.0
-        task_signature = _stable_hash(input_)
+        task_signature = _stable_hash({"input_": input_, "run_config": run_config})
         for task in pipeline:
+            if run_config:
+                task.run_config = run_config
             task_signature += f">{task.__class__.__name__}"
             if task_signature in self.cache:
                 input_ = self.cache[task_signature]["output"]
