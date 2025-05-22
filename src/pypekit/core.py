@@ -1,3 +1,4 @@
+import uuid
 import time
 import sys
 from abc import ABC, abstractmethod
@@ -78,7 +79,8 @@ class Node:
 
 
 class Pipeline(Task):
-    def __init__(self, tasks: Optional[List[Task]] = None):
+    def __init__(self, tasks: Optional[List[Task]] = None, id: Optional[str] = None):
+        self.id = id or uuid.uuid4().hex
         self.tasks: List[Task] = []
         if tasks:
             self.add_tasks(tasks)
@@ -250,38 +252,34 @@ class CachedExecutor:
         self.pipelines = pipelines
         self.cache: Dict[str, Any] = cache or {}
         self.verbose = verbose
-        self.results: List[Dict[str, Any]] = []
+        self.results: Dict[str, Dict[str, Any]] = {}
 
     def run(
         self, input_: Optional[Any] = None, run_config: Optional[Dict[str, Any]] = None
-    ) -> List[Dict[str, Any]]:
+    ) -> Dict[str, Dict[str, Any]]:
         """
-        Runs all pipelines in the executor, caching results to avoid redundant computations.
+        Runs all pipelines in the executor, caching task outputs to avoid redundant computations.
         :param input_: Input for the first task in each pipeline.
         :param run_config: Run configuration for the tasks.
-        :return: List of results for each pipeline.
+        :return: Dictionary of results for each pipeline.
         """
-        self.results = []
+        self.results = {}
         for i, pipeline in enumerate(self.pipelines):
             try:
                 output, runtime = self._run_pipeline(pipeline, input_, run_config)
             except Exception as e:
                 print(f"Error in pipeline {i + 1}: {e}")
-                self.results.append(
-                    {
-                        "output": None,
-                        "runtime": None,
-                        "tasks": [task.__class__.__name__ for task in pipeline],
-                    }
-                )
-                continue
-            self.results.append(
-                {
-                    "output": output,
-                    "runtime": runtime,
+                self.results[pipeline.id] = {
+                    "output": None,
+                    "runtime": None,
                     "tasks": [task.__class__.__name__ for task in pipeline],
                 }
-            )
+                continue
+            self.results[pipeline.id] = {
+                "output": output,
+                "runtime": runtime,
+                "tasks": [task.__class__.__name__ for task in pipeline],
+            }
             if self.verbose:
                 print(
                     f"Pipeline {i + 1}/{len(self.pipelines)} completed. Runtime: {runtime:.2f}s."
