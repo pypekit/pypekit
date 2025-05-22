@@ -147,6 +147,9 @@ class Repository:
         self.root = Node(Root())
         self._build_tree_recursive(self.root, set(), 0, max_depth)
         self._prune_tree()
+        if not self.leaves:
+            self.root = None
+            raise ValueError("Tree is empty. Check your input_types and output_types.")
         return self.root
 
     def _build_tree_recursive(
