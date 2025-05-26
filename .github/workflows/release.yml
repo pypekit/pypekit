@@ -20,7 +20,7 @@ jobs:
       - name: Build with Hatch
         run: |
           pip install hatch
-          hatch build        # produces dist/*
+          hatch build
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
