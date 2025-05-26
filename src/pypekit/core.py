@@ -1,8 +1,9 @@
 import uuid
 import time
 import sys
+import traceback
 from abc import ABC, abstractmethod
-from typing import List, Dict, Optional, Tuple, Any, Type, Set, Iterator
+from typing import List, Dict, Optional, Tuple, Any, Type, Iterator
 
 from .utils import _stable_hash
 
@@ -14,25 +15,8 @@ SINK_TYPE = "sink"
 class Task(ABC):
 
     run_config: Optional[Dict[str, Any]] = None
-    task_config: Optional[Dict[str, Any]] = None
-
-    @property
-    @abstractmethod
-    def input_types(self) -> Set[str]:
-        """
-        Returns the input types of the task.
-        :return: Set of input types.
-        """
-        pass
-
-    @property
-    @abstractmethod
-    def output_types(self) -> Set[str]:
-        """
-        Returns the output types of the task.
-        :return: Set of output types.
-        """
-        pass
+    input_types: List[str] = []
+    output_types: List[str] = []
 
     @abstractmethod
     def run(self, input_: Optional[Any] = None) -> Any:
@@ -45,13 +29,8 @@ class Task(ABC):
 
 
 class Root(Task):
-    @property
-    def input_types(self) -> Set[str]:
-        return set()
-
-    @property
-    def output_types(self) -> Set[str]:
-        return {SOURCE_TYPE}
+    input_types = []
+    output_types = [SOURCE_TYPE]
 
     def run(self, input_: Optional[Any] = None) -> Any:
         return input_
@@ -85,26 +64,6 @@ class Pipeline(Task):
         if tasks:
             self.add_tasks(tasks)
 
-    @property
-    def input_types(self) -> Set[str]:
-        """
-        Returns the input types of the first task in the pipeline.
-        :return: Set of input types.
-        """
-        if not self.tasks:
-            return set()
-        return self.tasks[0].input_types
-
-    @property
-    def output_types(self) -> Set[str]:
-        """
-        Returns the output types of the last task in the pipeline.
-        :return: Set of output types.
-        """
-        if not self.tasks:
-            return set()
-        return self.tasks[-1].output_types
-
     def add_tasks(self, tasks: List[Task]) -> None:
         """
         Adds tasks to the pipeline.
@@ -129,12 +88,20 @@ class Pipeline(Task):
         return input_
 
     def _add_task(self, task: Task) -> None:
-        if task.input_types.intersection(self.output_types) or not self.tasks:
+        if not self.tasks:
             self.tasks.append(task)
+            self.input_types = task.input_types
+            self.output_types = task.output_types
+        elif self._types_fit(task):
+            self.tasks.append(task)
+            self.output_types = task.output_types
         else:
             raise ValueError(
                 f"Task {task.__class__.__name__} cannot be added to the pipeline. Input types do not match the output types of {self.tasks[-1].__class__.__name__}."
             )
+
+    def _types_fit(self, task: Task) -> bool:
+        return any(output_type in task.input_types for output_type in self.output_types)
 
     def __iter__(self) -> Iterator[Task]:
         return iter(self.tasks)
@@ -144,12 +111,32 @@ class Pipeline(Task):
 
 
 class Repository:
-    def __init__(self, task_classes: Optional[Set[Type[Task]]] = None):
+    def __init__(
+        self,
+        tasks: Optional[List[Type[Task]] | Tuple[Type[Task], Dict[str, Any]]] = None,
+    ):
+        self.tasks: List[Tuple[Type[Task], Dict[str, Any]]] = []
         self.root: Optional[Node] = None
         self.leaves: List[Node] = []
-        self.task_classes: Set[Type[Task]] = task_classes or set()
         self.pipelines: List[Pipeline] = []
         self.tree_string: str = ""
+        if tasks:
+            self._build_repository(tasks)
+
+    def _build_repository(
+        self, tasks: List[Type[Task]] | Tuple[Type[Task], Dict[str, Any]]
+    ) -> None:
+        self.tasks = []
+        for task in tasks:
+            if isinstance(task, tuple) and len(task) == 2:
+                task_class, task_kwargs = task
+                self.tasks.append((task_class, task_kwargs))
+            elif isinstance(task, type) and issubclass(task, Task):
+                self.tasks.append((task, {}))
+            else:
+                raise ValueError(
+                    "Tasks must be either a Task subclass or a tuple of (Task subclass, Dict[str, Any])."
+                )
 
     def build_tree(self, max_depth: int = sys.getrecursionlimit()) -> Node:
         """
@@ -160,7 +147,7 @@ class Repository:
         :return: Root node of the tree.
         """
         self.root = Node(Root())
-        self._build_tree_recursive(self.root, set(), 0, max_depth)
+        self._build_tree_recursive(self.root, self.tasks, 0, max_depth)
         self._prune_tree()
         if not self.leaves:
             self.root = None
@@ -168,25 +155,32 @@ class Repository:
         return self.root
 
     def _build_tree_recursive(
-        self, node: Node, visited_nodes: Set[Type[Task]], depth: int, max_depth: int
+        self,
+        node: Node,
+        available_tasks: List[Tuple[Type[Task], Dict[str, Any]]],
+        depth: int,
+        max_depth: int,
     ) -> None:
         if depth > max_depth:
             self.leaves.append(node)
             return
-        available_task_classes = self.task_classes - visited_nodes
-        next_task_classes = [
-            task_class
-            for task_class in available_task_classes
-            if node.task.output_types.intersection(task_class().input_types)
-        ]
-        if not next_task_classes:
+        found_valid_task = False
+        for i, (task_class, task_kwargs) in enumerate(available_tasks):
+            if self._type_fits(node, task_class):
+                found_valid_task = True
+                new_node = Node(task_class(**task_kwargs), parent=node)
+                node.add_child(new_node)
+                new_available_task = available_tasks[:i] + available_tasks[i + 1 :]
+                self._build_tree_recursive(
+                    new_node, new_available_task, depth + 1, max_depth
+                )
+        if not found_valid_task:
             self.leaves.append(node)
-        for task_class in next_task_classes:
-            new_node = Node(task_class(), parent=node)
-            node.add_child(new_node)
-            self._build_tree_recursive(
-                new_node, visited_nodes | {task_class}, depth + 1, max_depth
-            )
+
+    def _type_fits(self, node: Node, task: Type[Task]) -> bool:
+        return any(
+            output_type in task.input_types for output_type in node.task.output_types
+        )
 
     def _prune_tree(self) -> None:
         for node in self.leaves.copy():
@@ -267,8 +261,10 @@ class CachedExecutor:
         for i, pipeline in enumerate(self.pipelines):
             try:
                 output, runtime = self._run_pipeline(pipeline, input_, run_config)
-            except Exception as e:
-                print(f"Error in pipeline {i + 1}: {e}")
+            except Exception:
+                if self.verbose:
+                    print(f"Error running pipeline {i + 1}/{len(self.pipelines)}.")
+                traceback.print_exc()
                 self.results[pipeline.id] = {
                     "output": None,
                     "runtime": None,
