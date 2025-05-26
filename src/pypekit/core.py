@@ -16,6 +16,8 @@ class Task(ABC):
     run_config: Optional[Dict[str, Any]] = None
     input_types: List[str] = []
     output_types: List[str] = []
+    id: str = ""
+    kwargs: Dict[str, Any] = {}
 
     @abstractmethod
     def run(self, input_: Optional[Any] = None) -> Any:
@@ -25,6 +27,10 @@ class Task(ABC):
         :return: Output of the task.
         """
         pass
+
+    def __repr__(self) -> str:
+        args = ", ".join(f"{k}={v!r}" for k, v in self.kwargs.items())
+        return f"{self.__class__.__name__}({args})"
 
 
 class Root(Task):
@@ -61,15 +67,32 @@ class Pipeline(Task):
         self.id = id or uuid.uuid4().hex
         self.tasks: List[Task] = []
         if tasks:
-            self.add_tasks(tasks)
+            self._build_pipeline(tasks)
 
-    def add_tasks(self, tasks: List[Task]) -> None:
-        """
-        Adds tasks to the pipeline.
-        :param tasks: List of tasks to be added.
-        """
+    def _build_pipeline(self, tasks: List[Task]) -> None:
+        self.tasks = []
         for task in tasks:
             self._add_task(task)
+
+    def _add_task(self, task: Task) -> None:
+        if not isinstance(task, Task):
+            raise TypeError(f"Expected Task instance, got {type(task)}.")
+        is_first = not self.tasks
+        if not is_first and not self._types_fit(task):
+            raise ValueError(
+                f"Task {task} cannot be added to the pipeline. Input types {task.input_types} do not match output types of {self.tasks[-1]} ({self.output_types})."
+            )
+        task.id = uuid.uuid4().hex
+        self.tasks.append(task)
+        if is_first:
+            self.input_types = task.input_types
+        self.output_types = task.output_types
+
+    def _types_fit(self, task: Task) -> bool:
+        return any(
+            output_type in task.input_types
+            for output_type in self.tasks[-1].output_types
+        )
 
     def run(
         self, input_: Optional[Any] = None, run_config: Optional[Dict[str, Any]] = None
@@ -81,40 +104,25 @@ class Pipeline(Task):
         :return: Output of the last task in the pipeline.
         """
         for task in self.tasks:
-            if run_config:
-                task.run_config = run_config
+            task.run_config = run_config
             input_ = task.run(input_)
         return input_
-
-    def _add_task(self, task: Task) -> None:
-        if not self.tasks:
-            self.tasks.append(task)
-            self.input_types = task.input_types
-            self.output_types = task.output_types
-        elif self._types_fit(task):
-            self.tasks.append(task)
-            self.output_types = task.output_types
-        else:
-            raise ValueError(
-                f"Task {task.__class__.__name__} cannot be added to the pipeline. Input types do not match the output types of {self.tasks[-1].__class__.__name__}."
-            )
-
-    def _types_fit(self, task: Task) -> bool:
-        return any(output_type in task.input_types for output_type in self.output_types)
 
     def __iter__(self) -> Iterator[Task]:
         return iter(self.tasks)
 
     def __repr__(self) -> str:
-        return f"Pipeline(tasks={[task.__class__.__name__ for task in self.tasks]})"
+        return f"Pipeline(tasks={self.tasks})"
 
 
 class Repository:
     def __init__(
         self,
-        tasks: Optional[List[Type[Task]] | Tuple[Type[Task], Dict[str, Any]]] = None,
+        tasks: Optional[
+            List[Task | Type[Task] | Tuple[Type[Task], Dict[str, Any]]]
+        ] = None,
     ):
-        self.tasks: List[Tuple[Type[Task], Dict[str, Any]]] = []
+        self.tasks: List[Task | Type[Task] | Tuple[Type[Task], Dict[str, Any]]] = []
         self.root: Optional[Node] = None
         self.leaves: List[Node] = []
         self.pipelines: List[Pipeline] = []
@@ -123,19 +131,31 @@ class Repository:
             self._build_repository(tasks)
 
     def _build_repository(
-        self, tasks: List[Type[Task]] | Tuple[Type[Task], Dict[str, Any]]
+        self, tasks: List[Task | Type[Task] | Tuple[Type[Task], Dict[str, Any]]]
     ) -> None:
         self.tasks = []
         for task in tasks:
-            if isinstance(task, tuple) and len(task) == 2:
-                task_class, task_kwargs = task
-                self.tasks.append((task_class, task_kwargs))
-            elif isinstance(task, type) and issubclass(task, Task):
-                self.tasks.append((task, {}))
-            else:
-                raise ValueError(
-                    "Tasks must be either a Task subclass or a tuple of (Task subclass, Dict[str, Any])."
-                )
+            self._add_task(task)
+
+    def _add_task(
+        self, task: Task | Type[Task] | Tuple[Type[Task], Dict[str, Any]]
+    ) -> None:
+        if (
+            isinstance(task, tuple)
+            and len(task) == 2
+            and issubclass(task[0], Task)
+            and isinstance(task[1], dict)
+        ):
+            task_class, task_kwargs = task
+            self.tasks.append((task_class, task_kwargs))
+        elif isinstance(task, type) and issubclass(task, Task):
+            self.tasks.append(task)
+        elif isinstance(task, Task):
+            self.tasks.append(task)
+        else:
+            raise ValueError(
+                "Tasks must be either an instance of a Task subclass, a Task subclass or a tuple of (Task subclass, Dict[str, Any])."
+            )
 
     def build_tree(self, max_depth: int = sys.getrecursionlimit()) -> Node:
         """
@@ -156,7 +176,7 @@ class Repository:
     def _build_tree_recursive(
         self,
         node: Node,
-        available_tasks: List[Tuple[Type[Task], Dict[str, Any]]],
+        available_tasks: List[Task | Type[Task] | Tuple[Type[Task], Dict[str, Any]]],
         depth: int,
         max_depth: int,
     ) -> None:
@@ -164,22 +184,49 @@ class Repository:
             self.leaves.append(node)
             return
         found_valid_task = False
-        for i, (task_class, task_kwargs) in enumerate(available_tasks):
-            if self._type_fits(node, task_class):
-                found_valid_task = True
-                new_node = Node(task_class(**task_kwargs), parent=node)
-                node.add_child(new_node)
-                new_available_task = available_tasks[:i] + available_tasks[i + 1 :]
-                self._build_tree_recursive(
-                    new_node, new_available_task, depth + 1, max_depth
-                )
+        for i, task in enumerate(available_tasks):
+            if not self._type_fits(node, task):
+                continue
+            found_valid_task = True
+            task_instance = self._instantiate_task(task)
+            new_node = Node(task_instance, parent=node)
+            node.add_child(new_node)
+            new_available_task = available_tasks[:i] + available_tasks[i + 1 :]
+            self._build_tree_recursive(
+                new_node, new_available_task, depth + 1, max_depth
+            )
         if not found_valid_task:
             self.leaves.append(node)
 
-    def _type_fits(self, node: Node, task: Type[Task]) -> bool:
-        return any(
-            output_type in task.input_types for output_type in node.task.output_types
-        )
+    def _instantiate_task(
+        self, task: Task | Type[Task] | Tuple[Type[Task], Dict[str, Any]]
+    ) -> Task:
+        if isinstance(task, tuple):
+            task_class, task_kwargs = task
+            task_instance = task_class(**task_kwargs)
+        elif isinstance(task, type):
+            task_instance = task()
+            task_kwargs = {}
+        else:
+            task_instance = task
+            task_kwargs = task.kwargs.copy() if hasattr(task, "kwargs") else {}
+        task_instance.kwargs = task_kwargs
+        task_instance.id = uuid.uuid4().hex
+        return task_instance
+
+    def _type_fits(
+        self, node: Node, task: Task | Type[Task] | Tuple[Type[Task], Dict[str, Any]]
+    ) -> bool:
+        if isinstance(task, tuple):
+            return any(
+                output_type in task[0].input_types
+                for output_type in node.task.output_types
+            )
+        else:
+            return any(
+                output_type in task.input_types
+                for output_type in node.task.output_types
+            )
 
     def _prune_tree(self) -> None:
         for node in self.leaves.copy():
@@ -208,7 +255,7 @@ class Repository:
         self, node: Node, prefix: str = "", is_last: bool = True
     ) -> None:
         connector = "└── " if is_last else "├── "
-        self.tree_string += prefix + connector + node.task.__class__.__name__ + "\n"
+        self.tree_string += prefix + connector + str(node.task) + "\n"
         continuation = "    " if is_last else "│   "
         child_prefix = prefix + continuation
         total = len(node.children)
@@ -239,11 +286,11 @@ class CachedExecutor:
     def __init__(
         self,
         pipelines: List[Pipeline],
-        cache: Optional[Dict[str, Any]] = None,
+        cache: Optional[Dict[Tuple[str, ...], Any]] = None,
         verbose: bool = False,
     ):
         self.pipelines = pipelines
-        self.cache: Dict[str, Any] = cache or {}
+        self.cache: Dict[Tuple[str, ...], Any] = cache or {}
         self.verbose = verbose
         self.results: Dict[str, Dict[str, Any]] = {}
 
@@ -263,17 +310,17 @@ class CachedExecutor:
             except Exception:
                 if self.verbose:
                     print(f"Error running pipeline {i + 1}/{len(self.pipelines)}.")
-                traceback.print_exc()
+                    traceback.print_exc()
                 self.results[pipeline.id] = {
                     "output": None,
                     "runtime": None,
-                    "tasks": [task.__class__.__name__ for task in pipeline],
+                    "tasks": [str(task) for task in pipeline.tasks],
                 }
                 continue
             self.results[pipeline.id] = {
                 "output": output,
                 "runtime": runtime,
-                "tasks": [task.__class__.__name__ for task in pipeline],
+                "tasks": [str(task) for task in pipeline.tasks],
             }
             if self.verbose:
                 print(
@@ -288,11 +335,12 @@ class CachedExecutor:
         run_config: Optional[Dict[str, Any]] = None,
     ) -> Tuple[Any, float]:
         runtime = 0.0
-        task_signature = _stable_hash({"input_": input_, "run_config": run_config})
+        task_signature: Tuple[str, ...] = (
+            _stable_hash({"input_": input_, "run_config": run_config}),
+        )
         for task in pipeline:
-            if run_config:
-                task.run_config = run_config
-            task_signature += f">{task.__class__.__name__}"
+            task.run_config = run_config
+            task_signature = (*task_signature, task.id)
             if task_signature in self.cache:
                 input_ = self.cache[task_signature]["output"]
                 runtime += self.cache[task_signature]["runtime"]
