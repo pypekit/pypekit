@@ -82,7 +82,7 @@ def test_pipeline_add_and_run():
 def test_pipeline_add_task_mismatch():
     p = Pipeline(tasks=[DummySource()])
     with pytest.raises(ValueError):
-        p.add_tasks([DummySource()])
+        p._add_task(DummySource())
 
 
 def test_pipeline_iter_repr():
