@@ -1,10 +1,10 @@
 from .core import (
-    SOURCE_TYPE,
     SINK_TYPE,
-    Task,
+    SOURCE_TYPE,
+    CachedExecutor,
     Pipeline,
     Repository,
-    CachedExecutor,
+    Task,
 )
 
 __all__ = [

@@ -1,12 +1,11 @@
-import uuid
-import time
 import sys
+import time
 import traceback
+import uuid
 from abc import ABC, abstractmethod
-from typing import List, Dict, Optional, Tuple, Any, Type, Iterator
+from typing import Any, Dict, Iterator, List, Optional, Tuple, Type
 
 from .utils import _stable_hash
-
 
 SOURCE_TYPE = "source"
 SINK_TYPE = "sink"

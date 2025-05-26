@@ -1,14 +1,15 @@
 import pytest
+
 import src.pypekit.core as pm
 from src.pypekit.core import (
-    Task,
-    Root,
+    SINK_TYPE,
+    SOURCE_TYPE,
+    CachedExecutor,
     Node,
     Pipeline,
     Repository,
-    CachedExecutor,
-    SOURCE_TYPE,
-    SINK_TYPE,
+    Root,
+    Task,
 )
 
 
