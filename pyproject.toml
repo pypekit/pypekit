@@ -4,13 +4,13 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pypekit"
-version = "0.0.2"
+version = "0.1.0"
 authors = [
   { name = "Tim Berti", email = "tim.fabian.berti@gmail.com" }
 ]
 description = "Lightweight Python package for data pipelines"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 classifiers = ["Programming Language :: Python"]
 license = "MIT"
 license-files = ["LICEN[CS]E*"]
@@ -26,12 +26,17 @@ dev = [
   "mypy>=1.10",
   "pytest>=8.2",
   "pytest-cov>=4.1",
+  "isort>=5.0"
 ]
 
 [tool.pytest.ini_options]
 addopts = "-ra -q"
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
+
+[tool.isort]
+profile = "black"
+src_paths = ["src", "tests"]
 
 [tool.mypy]
 mypy_path = ["src"]
@@ -40,8 +45,8 @@ show_error_codes = true
 ignore_missing_imports = true
 
 [tool.hatch.envs.default.scripts]
-fmt       = "black src tests"
-fmt-check = "black --check src tests"
+fmt       = "isort src tests && black src tests"
+fmt-check = "isort --check-only src tests && black --check src tests"
 types     = "mypy src"
 test      = "pytest"
 check     = [
