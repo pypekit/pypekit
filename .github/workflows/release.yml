@@ -7,36 +7,20 @@ permissions:
   id-token: write
 
 jobs:
-  build:
-    name: Build distributions
+  release:
     runs-on: ubuntu-latest
+    environment: pypi
+
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.x'
-      - name: Install build tools & build
+
+      - name: Build with Hatch
         run: |
           pip install hatch
-          hatch build
-      - uses: actions/upload-artifact@v3
-        with:
-          name: dist
-          path: dist/
+          hatch build        # produces dist/*
 
-  publish:
-    name: Publish to PyPI
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: pypi
-      url: https://pypi.org/project/pypekit/
-    permissions:
-      id-token: write
-    steps:
-      - uses: actions/download-artifact@v3
-        with:
-          name: dist
-          path: dist/
-      - name: Publish package distributions to PyPI
+      - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
