@@ -5,6 +5,7 @@ on:
 permissions:
   contents: read
   id-token: write
+  actions: read
 
 jobs:
   release:
@@ -14,8 +15,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
+
+      - name: Upload distributions
+        uses: actions/upload-artifact@v4
         with:
-          python-version: '3.x'
+          name: dist
+          path: dist/
+
+      - name: Download distributions
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
 
       - name: Build with Hatch
         run: |
