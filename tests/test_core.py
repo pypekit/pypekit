@@ -123,7 +123,8 @@ def test_repository_invalid_tasks():
 def test_run_config_propagation():
     t = ConfigTask()
     p = Pipeline([t])
-    out = p.run(None, run_config={"x": 42})
+    p.run_config = {"x": 42}
+    out = p.run(None)
     assert out == 42
     assert t.run_config == {"x": 42}
 

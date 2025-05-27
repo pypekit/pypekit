@@ -94,17 +94,14 @@ class Pipeline(Task):
             for output_type in self.tasks[-1].output_types
         )
 
-    def run(
-        self, input_: Optional[Any] = None, run_config: Optional[Dict[str, Any]] = None
-    ) -> Any:
+    def run(self, input_: Optional[Any] = None) -> Any:
         """
         Executes the pipeline by running each task sequentially.
         :param input_: Input to the first task in the pipeline.
-        :param run_config: Run configuration for the tasks.
         :return: Output of the last task in the pipeline.
         """
         for task in self.tasks:
-            task.run_config = run_config
+            task.run_config = self.run_config
             input_ = task.run(input_)
         return input_
 
