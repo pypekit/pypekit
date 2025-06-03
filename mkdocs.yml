@@ -20,10 +20,18 @@ theme:
       icon: material/brightness-7
       name: Switch to light mode
 plugins:
-  - search
-  - mkdocstrings
-  - autorefs
-  - mkdocs-jupyter
+- mkdocstrings:
+    handlers:
+      python:
+        options:
+          docstring_section_style: table
+          docstring_style: numpy
+          docstrin_options:
+            ignore_init_summary: true
+          merge_init_into_class: true
+- autorefs
+- mkdocs-jupyter
+- search
 nav:
   - Home: index.md
   - Getting Started: getting-started.md
