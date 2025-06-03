@@ -1,0 +1,23 @@
+site_name: pypekit
+site_url: https://pypekit.github.io/pypekit
+repo_url: https://github.com/pypekit/pypekit
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.top
+  logo: assets/logo.png
+  favicon: assets/favicon.ico
+plugins:
+  - search
+  - mkdocstrings
+  - autorefs
+  - mkdocs-jupyter
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Examples:
+      - "Basic Example": examples/example.ipynb
+      - "Cross Validation": examples/cross_validation.ipynb
+  - API Reference:
+      - pypekit: reference/pypekit.md

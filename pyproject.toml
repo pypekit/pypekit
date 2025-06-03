@@ -28,6 +28,13 @@ dev = [
   "pytest-cov>=4.1",
   "isort>=5.0"
 ]
+docs = [
+  "mkdocs>=1.6",
+  "mkdocs-material>=9.5",
+  "mkdocstrings[python]>=0.24",
+  "mkdocs-autorefs>=1.0",
+  "mkdocs-jupyter>=0.24"
+]
 
 [tool.pytest.ini_options]
 addopts = "-ra -q"
@@ -44,13 +51,19 @@ strict = true
 show_error_codes = true
 ignore_missing_imports = true
 
+[tool.hatch.envs.docs]
+dependencies = ["pypekit[dev,docs]"]
+scripts = { build = "mkdocs build", serve = "mkdocs serve -a localhost:8000" }
+
 [tool.hatch.envs.default.scripts]
 fmt       = "isort src tests && black src tests"
 fmt-check = "isort --check-only src tests && black --check src tests"
 types     = "mypy src"
 test      = "pytest"
+docs      = "hatch run docs:mkdocs build --strict"
 check     = [
   "fmt-check",
   "types",
   "test",
+  "docs"
 ]
