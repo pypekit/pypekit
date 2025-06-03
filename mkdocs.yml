@@ -29,6 +29,7 @@ nav:
   - Getting Started: getting-started.md
   - Examples:
       - "Basic Example": examples/example.ipynb
+      - "Iris Dataset": examples/iris.ipynb
       - "Cross Validation": examples/cross_validation.ipynb
   - API Reference:
       - pypekit: reference/pypekit.md
