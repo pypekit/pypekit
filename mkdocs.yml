@@ -1,6 +1,7 @@
 site_name: pypekit
 site_url: https://pypekit.github.io/pypekit
 repo_url: https://github.com/pypekit/pypekit
+site_description: "Pypekit is a lightweight Python framework for the automatic synthesis and cached execution of pipelines."
 theme:
   name: material
   features:
@@ -22,18 +23,19 @@ theme:
   features:
   - content.code.copy
 plugins:
-- mkdocstrings:
-    handlers:
-      python:
-        options:
-          docstring_section_style: table
-          docstring_style: numpy
-          docstrin_options:
-            ignore_init_summary: true
-          merge_init_into_class: true
-- autorefs
-- mkdocs-jupyter
-- search
+  - autorefs
+  - mkdocs-jupyter
+  - search
+  - meta-descriptions
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_section_style: table
+            docstring_style: numpy
+            docstrin_options:
+              ignore_init_summary: true
+            merge_init_into_class: true
 markdown_extensions:
   - pymdownx.highlight:
       anchor_linenums: true

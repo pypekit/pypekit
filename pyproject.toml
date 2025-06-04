@@ -5,19 +5,31 @@ build-backend = "hatchling.build"
 [project]
 name = "pypekit"
 version = "0.1.2"
-authors = [
-  { name = "Tim Berti", email = "tim.fabian.berti@gmail.com" }
-]
+authors = [{ name = "Tim Berti", email = "tim.fabian.berti@gmail.com" }]
 description = "Lightweight Python package for data pipelines"
 readme = "README.md"
 requires-python = ">=3.10"
 classifiers = ["Programming Language :: Python"]
 license = "MIT"
 license-files = ["LICEN[CS]E*"]
+keywords = [
+  "python",
+  "workflow",
+  "data-science",
+  "machine-learning",
+  "automation",
+  "etl",
+  "pipelines",
+  "pipeline-framework",
+  "synthesis",
+  "automl",
+  "data-pipelines",
+]
 
 [project.urls]
 Homepage = "https://github.com/pypekit/pypekit"
-Issues   = "https://github.com/pypekit/pypekit/issues"
+Documentation = "https://pypekit.readthedocs.io"
+Issues = "https://github.com/pypekit/pypekit/issues"
 
 [project.optional-dependencies]
 dev = [
@@ -26,14 +38,15 @@ dev = [
   "mypy>=1.10",
   "pytest>=8.2",
   "pytest-cov>=4.1",
-  "isort>=5.0"
+  "isort>=5.0",
 ]
 docs = [
   "mkdocs>=1.6",
   "mkdocs-material>=9.5",
   "mkdocstrings[python]>=0.24",
   "mkdocs-autorefs>=1.0",
-  "mkdocs-jupyter>=0.24"
+  "mkdocs-jupyter>=0.24",
+  "mkdocs-meta-descriptions-plugin>=4.0",
 ]
 
 [tool.pytest.ini_options]
@@ -51,19 +64,11 @@ strict = true
 show_error_codes = true
 ignore_missing_imports = true
 
-[tool.hatch.envs.docs]
-dependencies = ["pypekit[dev,docs]"]
-scripts = { build = "mkdocs build", serve = "mkdocs serve -a localhost:8000" }
-
 [tool.hatch.envs.default.scripts]
-fmt       = "isort src tests && black src tests"
+fmt = "isort src tests && black src tests"
 fmt-check = "isort --check-only src tests && black --check src tests"
-types     = "mypy src"
-test      = "pytest"
-docs      = "hatch run docs:mkdocs build --strict"
-check     = [
-  "fmt-check",
-  "types",
-  "test",
-  "docs"
-]
+types = "mypy src"
+test = "pytest"
+docs = "mkdocs serve -a localhost:8000"
+build-docs = "mkdocs build --strict"
+check = ["fmt-check", "types", "test", "build-docs"]
