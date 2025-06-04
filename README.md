@@ -1,6 +1,6 @@
-<h1 align="center" style="margin-bottom: 0;">
+<div align="center" style="margin-bottom: 0;">
 <img src="docs/assets/logo.png" width="200">
-</h1>
+</div>
 
 # pypekit
 
