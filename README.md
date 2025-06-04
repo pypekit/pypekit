@@ -1,13 +1,11 @@
 # pypekit
 
-A lightweight pipeline framework for Python. Examples can be found [`here`](https://github.com/pypekit/pypekit/tree/main/examples).
+A lightweight pipeline framework for Python. The Documentation can be found [`here`](https://pypekit.readthedocs.io/).
 
-## 📦 Installation
+## Installation
 
 ```bash
 pip install pypekit
-# or
-pip install git+https://github.com/pypekit/pypekit.git
 ```
 
 ## Acknowledgements
