@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pypekit"
-version = "0.1.2"
+version = "0.1.3"
 authors = [{ name = "Tim Berti", email = "tim.fabian.berti@gmail.com" }]
 description = "Lightweight Python package for data pipelines"
 readme = "README.md"
