@@ -16,9 +16,9 @@ def _stable_hash(obj: Any) -> str:
     The function attempts three strategies, in order of increasing cost, and
     returns as soon as one succeeds:
 
-    1. Use the built-in :pyfunc:`hash`.  
+    1. Use the built-in :pyfunc:`hash`.
     2. JSON-serialise the object with sorted keys to obtain a stable byte
-       representation.  
+       representation.
     3. Pickle the object with protocol 5.
 
     For strategies 2 and 3 the resulting byte blob is fed to
