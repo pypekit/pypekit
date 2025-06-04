@@ -1,5 +1,5 @@
 <div align="center" style="margin-bottom: 0;">
-<img src="docs/assets/logo.png" width="200">
+<img src="docs/assets/logo.png" width="150">
 </div>
 
 # pypekit
