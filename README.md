@@ -1,5 +1,5 @@
 <div align="center" style="margin-bottom: 0;">
-<img src="https://github.com/pypekit/pypekit/blob/main/docs/assets/logo.png" width="150">
+<img src="https://raw.githubusercontent.com/pypekit/pypekit/refs/heads/main/docs/assets/logo.png" width="150">
 </div>
 
 # pypekit
