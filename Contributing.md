@@ -16,7 +16,6 @@
 
 * Follow conventional commits (`feat: …`, `fix: …`, `docs: …`).
 * Run `hatch run fmt` to auto format your code.
-* Run `hatch run docs` to build the documentation.
-* Run `hatch run docs:serve` to preview the documentation on `localhost:8000`.
+* Run `hatch run docs` to preview the documentation on `localhost:8000`.
 * Run `hatch run check` to check formating, run tests, and build the documentation.
 * Open a pull request.
