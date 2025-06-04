@@ -1,6 +1,6 @@
 # pypekit
 
-A lightweight pipeline framework for Python. The Documentation can be found [`here`](https://pypekit.readthedocs.io/).
+A lightweight Python framework for the automatic synthesis and cached execution of pipelines. The Documentation can be found [`here`](https://pypekit.readthedocs.io/).
 
 ## Installation
 
