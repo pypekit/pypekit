@@ -1,3 +1,7 @@
+<div align="center" style="margin-bottom: 0;">
+<img src="docs/assets/logo.png" width="150">
+</div>
+
 # pypekit
 
 A lightweight Python framework for the automatic synthesis and cached execution of pipelines. The Documentation can be found [`here`](https://pypekit.readthedocs.io/).
