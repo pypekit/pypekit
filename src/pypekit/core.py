@@ -17,7 +17,7 @@ import uuid
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Iterator, List, Optional, Tuple, Type
 
-from .utils import _stable_hash
+from .hashing import stable_hash
 
 SOURCE_TYPE = "source"
 SINK_TYPE = "sink"
@@ -94,8 +94,7 @@ class Node:
     """Tree node holding a :class:`Task` instance."""
 
     def __init__(self, task: Task, parent: Optional["Node"] = None) -> None:
-        """Create a new *Node*.
-
+        """
         Parameters
         ----------
         task : Task
@@ -129,8 +128,8 @@ class Node:
             for output_type in self.task.output_types
         ):
             raise ValueError(
-                "Child cannot be added to node. Output types of the child "
-                "task do not match input types of the node task."
+                f"Child cannot be added. Output types {self.task.output_types} of {self.task} "
+                f"do not match input types {child.task.input_types} of {child.task}."
             )
         self.children.append(child)
 
@@ -193,9 +192,9 @@ class Pipeline(Task):
         is_first = not self.tasks
         if not is_first and not self._types_fit(task):
             raise ValueError(
-                "Task {task} cannot be added to the pipeline. Input types "
-                f"{task.input_types} do not match output types of {self.tasks[-1]} "
-                f"({self.output_types})."
+                f"Task {task} cannot be added to the pipeline. "
+                f"Output types {self.tasks[-1].output_types} of {self.tasks[-1]} "
+                f"do not match input types {task.input_types} of {task}."
             )
         task.id = uuid.uuid4().hex
         self.tasks.append(task)
@@ -528,7 +527,9 @@ class CachedExecutor:
     ) -> Tuple[Any, float]:
         runtime = 0.0
         task_signature: Tuple[str, ...] = (
-            _stable_hash({"input_": input_, "run_config": run_config}),
+            stable_hash(
+                {"input_": input_, "run_config": run_config}, verbose=self.verbose
+            ),
         )
         for task in pipeline:
             task.run_config = run_config

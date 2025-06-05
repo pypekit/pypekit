@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pypekit"
-version = "0.1.5"
+version = "0.1.6"
 authors = [{ name = "Tim Berti", email = "tim.fabian.berti@gmail.com" }]
 description = "Lightweight Python package for data pipelines"
 readme = "README.md"
@@ -33,21 +33,25 @@ Issues = "https://github.com/pypekit/pypekit/issues"
 
 [project.optional-dependencies]
 dev = [
-  "hatch>=1.10",
-  "black>=24.3",
-  "mypy>=1.10",
-  "pytest>=8.2",
-  "pytest-cov>=4.1",
-  "isort>=5.0",
+  "hatch>=1.14.1",
+  "black>=24.4.1",
+  "mypy>=1.16.0",
+  "pytest>=8.4.0",
+  "pytest-cov>=6.1.1",
+  "isort>=6.0.1",
 ]
 docs = [
-  "mkdocs>=1.6",
-  "mkdocs-material>=9.5",
-  "mkdocstrings[python]>=0.24",
-  "mkdocs-autorefs>=1.0",
-  "mkdocs-jupyter>=0.24",
-  "mkdocs-meta-descriptions-plugin>=4.0",
+  "jupyter>=1.1.0",
+  "pandas>=2.2.0",
+  "scikit-learn>=1.6.0",
+  "mkdocs>=1.6.1",
+  "mkdocs-material>=9.6.10",
+  "mkdocstrings[python]>=0.24.0",
+  "mkdocs-autorefs>=1.0.0",
+  "mkdocs-jupyter>=0.25.0",
+  "mkdocs-meta-descriptions-plugin>=4.0.0",
 ]
+
 
 [tool.pytest.ini_options]
 addopts = "-ra -q"

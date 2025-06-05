@@ -131,7 +131,7 @@ def test_run_config_propagation():
 
 def test_cached_executor_runs_and_caches(monkeypatch):
     # Monkey-patch stable_hash to a fixed signature for reproducibility
-    monkeypatch.setattr(pm, "_stable_hash", lambda x: "sig")
+    monkeypatch.setattr(pm, "stable_hash", lambda x: "sig")
     dummy1 = DummySource()
     dummy2 = DummyTransform()
     dummy3 = DummySink()
