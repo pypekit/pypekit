@@ -11,7 +11,7 @@ A lightweight Python framework for the automatic synthesis and cached execution 
 
 ## Quick Links
 
-* **[Getting Started](tutorials/getting-started)**
-* **[Examples](examples/iris)**
-* **[API Reference](api/pypekit)**
+* **[Getting Started](tutorials/getting-started.ipynb)**
+* **[Examples](examples/iris.ipynb)**
+* **[API Reference](api/pypekit.md)**
 
