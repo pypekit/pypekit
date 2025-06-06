@@ -4,7 +4,7 @@
 
 # pypekit
 
-[![CI Status](https://github.com/pypekit/pypekit/actions/workflows/checks.yml/badge.svg?branch=main)](https://github.com/pypekit/pypekit/actions/workflows/checks.yml)
+[![CI Status](https://github.com/pypekit/pypekit/actions/workflows/checks.yml/badge.svg)](https://github.com/pypekit/pypekit/actions/workflows/checks.yml)
 [![PyPI version](https://img.shields.io/pypi/v/pypekit)](https://pypi.org/project/pypekit/)
 [![Documentation Status](https://readthedocs.org/projects/pypekit/badge/?version=latest)](https://pypekit.readthedocs.io/en/latest/)
 [![License: MIT](https://img.shields.io/github/license/pypekit/pypekit)](https://github.com/pypekit/pypekit/blob/main/LICENSE)
